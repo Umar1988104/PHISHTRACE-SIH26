@@ -149,6 +149,22 @@ function extractDomain(addr) {
    ========================================================= */
 async function geolocateIp(ip) {
   if (!ip) return null;
+
+  // Primary: ipwho.is (free, HTTPS, CORS-enabled, no key needed)
+  try {
+    const res = await fetch(`https://ipwho.is/${ip}`);
+    const data = await res.json();
+    if (data.success !== false && data.latitude) {
+      return {
+        ip, city: data.city, region: data.region, country: data.country,
+        org: data.connection?.isp || data.connection?.org, lat: data.latitude, lon: data.longitude
+      };
+    }
+  } catch (e) {
+    console.warn('ipwho.is lookup failed, trying fallback:', e);
+  }
+
+  // Fallback: ipapi.co
   try {
     const res = await fetch(`https://ipapi.co/${ip}/json/`);
     if (!res.ok) throw new Error('geo lookup failed');
@@ -207,8 +223,8 @@ Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exa
   "forensic_report": "<a structured 150-250 word forensic report covering: authentication findings, sender identity analysis, origin/infrastructure assessment, and a recommended action. Write it like a short investigator's note.>"
 }`;
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+  const callGemini = () => fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -219,8 +235,19 @@ Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exa
     }
   );
 
+  // Retry up to 3 times on 503 (model temporarily overloaded) with a short backoff
+  let response;
+  let lastErrText = '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    response = await callGemini();
+    if (response.ok) break;
+    if (response.status !== 503) break; // don't retry on other errors (bad key, bad request, etc.)
+    lastErrText = await response.text();
+    await sleep(1200 * (attempt + 1));
+  }
+
   if (!response.ok) {
-    const errText = await response.text();
+    const errText = lastErrText || await response.text();
     throw new Error(`Gemini API error (${response.status}): ${errText.slice(0, 200)}`);
   }
 
