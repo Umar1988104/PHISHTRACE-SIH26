@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRACEMAIL — Email Threat & Forensic Trace Platform</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">TM</div>
+    <div>
+      <div class="brand-name">TRACEMAIL</div>
+      <div class="brand-tag">Email Threat &amp; Forensic Intelligence</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="mvp-pill">MVP BUILD</span>
+    <button id="apiKeyBtn">⚙ API Key</button>
+  </div>
+</header>
+
+<main>
+  <div class="intro">
+    <div>
+      <h1>Paste a raw email. Get the trace.</h1>
+      <p>Analyzes headers, authentication results, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin of the sending infrastructure.</p>
+    </div>
+    <div class="stat-strip">
+      <div><div class="n" id="statCount">0</div><div class="l">Analyzed</div></div>
+      <div><div class="n" id="statFlagged">0</div><div class="l">Flagged</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Raw Email Input</div>
+    <textarea id="emailInput" placeholder="Paste the full raw email source here — including headers (Received, From, Return-Path, DKIM-Signature, etc.) followed by the body.
+
+Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
+    <div class="input-row-bottom">
+      <button class="sample-link" id="loadSample">Load a sample phishing email →</button>
+      <button class="primary" id="analyzeBtn">Analyze Email</button>
+    </div>
+  </div>
+
+  <div class="panel" id="loadingBox">
+    <div class="loading-line" data-step="0"><span class="dot"></span> Parsing headers and relay chain…</div>
+    <div class="loading-line" data-step="1"><span class="dot"></span> Validating SPF / DKIM / DMARC…</div>
+    <div class="loading-line" data-step="2"><span class="dot"></span> Resolving origin IP geolocation…</div>
+    <div class="loading-line" data-step="3"><span class="dot"></span> Running AI fraud classification…</div>
+  </div>
+
+  <div id="results">
+    <div class="score-row">
+      <div class="score-card">
+        <div class="score-ring" id="scoreRing"><div class="num" id="scoreNum">--</div></div>
+        <div class="score-label" id="scoreLabel">—</div>
+      </div>
+      <div class="verdict-card">
+        <h3 id="verdictTitle">Verdict</h3>
+        <p id="verdictText">—</p>
+        <div class="flags-row" id="flagsRow"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-title">Header &amp; Protocol Analysis</div>
+        <table id="headerTable"></table>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Origin Geolocation</div>
+        <div id="map"></div>
+        <div class="geo-meta" id="geoMeta"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="panel-title">Relay / Trace Path</div>
+      <ul class="trace-list" id="traceList"></ul>
+    </div>
+
+    <div class="report-box">
+      <div class="panel-title">Forensic Report (AI-Generated)</div>
+      <div class="body-text" id="reportText"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="historyPanel" style="display:none;">
+    <div class="panel-title">Case History</div>
+    <div id="historyList"></div>
+  </div>
+</main>
+
+<footer>TRACEMAIL — SIH 2026 MVP · Analysis assists investigation, does not replace it · Built with HTML/CSS/JS</footer>
+
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <h3>Gemini API Key</h3>
+    <p>Get a free key at aistudio.google.com/apikey. Stored only in your browser's localStorage — never sent anywhere except directly to Google's API.</p>
+    <input type="password" id="apiKeyInput" placeholder="AIza..." />
+    <div class="modal-actions">
+      <button class="btn-ghost" id="apiCancel">Cancel</button>
+      <button class="btn-save" id="apiSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
