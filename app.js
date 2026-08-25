@@ -1,18 +1,18 @@
 /* =========================================================
-   TRACEMAIL — MVP logic (single file, Gemini API)
+   PHISHTRACE — MVP logic (single file, Gemini API)
    ========================================================= */
 const el = (id) => document.getElementById(id);
 
 /* ---------- API key modal ---------- */
 const apiModal = el('apiModal');
 el('apiKeyBtn').onclick = () => {
-  el('apiKeyInput').value = localStorage.getItem('tracemail_gemini_key') || '';
+  el('apiKeyInput').value = localStorage.getItem('phishtrace_gemini_key') || '';
   apiModal.style.display = 'flex';
 };
 el('apiCancel').onclick = () => apiModal.style.display = 'none';
 el('apiSave').onclick = () => {
   const key = el('apiKeyInput').value.trim();
-  if (key) localStorage.setItem('tracemail_gemini_key', key);
+  if (key) localStorage.setItem('phishtrace_gemini_key', key);
   apiModal.style.display = 'none';
 };
 
@@ -56,11 +56,11 @@ HDFC Bank Security Team`;
 el('loadSample').onclick = () => { el('emailInput').value = SAMPLE_EMAIL; };
 
 /* ---------- History (localStorage) ---------- */
-function getHistory(){ return JSON.parse(localStorage.getItem('tracemail_history') || '[]'); }
+function getHistory(){ return JSON.parse(localStorage.getItem('phishtrace_history') || '[]'); }
 function saveHistory(entry){
   const h = getHistory();
   h.unshift(entry);
-  localStorage.setItem('tracemail_history', JSON.stringify(h.slice(0, 20)));
+  localStorage.setItem('phishtrace_history', JSON.stringify(h.slice(0, 20)));
   renderHistory();
 }
 function renderHistory(){
@@ -181,7 +181,7 @@ async function geolocateIp(ip) {
    3. LLM CLASSIFICATION — Gemini API
    ========================================================= */
 async function classifyWithLLM(parsed, geo) {
-  const apiKey = localStorage.getItem('tracemail_gemini_key');
+  const apiKey = localStorage.getItem('phishtrace_gemini_key');
   if (!apiKey) {
     return {
       score: null,

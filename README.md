@@ -1,4 +1,4 @@
-# TRACEMAIL — AI-Powered Email Threat Detection, GeoLocation & Forensic Intelligence Platform
+# PHISHTRACE — AI-Powered Email Threat Detection, GeoLocation & Forensic Intelligence Platform
 
 Built for Smart India Hackathon 2026.
 
@@ -15,7 +15,7 @@ AI-Powered Email Threat Detection, GeoLocation and Forensic Intelligence Platfor
 
 ## Tech Stack
 - HTML, CSS, JavaScript (no framework, no build step)
-- Google Gemini API (`gemini-2.5-flash`) for fraud classification and forensic report generation — prompt-engineered, no ML model training
+- Google Gemini API (`gemini-3.6-flash`) for fraud classification and forensic report generation — prompt-engineered, no ML model training
 - ipapi.co for free IP geolocation
 - Leaflet.js for map rendering
 
@@ -37,3 +37,6 @@ This is a fully static, client-side app — no backend, no build step.
 Included: header parsing, IP/geo extraction, SPF/DKIM/DMARC checks, AI fraud scoring, forensic report generation, relay trace visualization.
 
 Not yet included (future scope): WHOIS/DNS deep lookups, threat-intel/blacklist correlation, graph-based multi-email attribution, chain-of-custody/evidence handling, real-time inbox monitoring.
+
+## Team
+Team PhishTrace
