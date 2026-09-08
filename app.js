@@ -1,5 +1,5 @@
 /* =========================================================
-   PHISHTRACE — MVP logic (single file, Gemini API)
+   PHISHTRACE — frontend logic (Email / Link / Message analysis, Gemini API)
    ========================================================= */
 const el = (id) => document.getElementById(id);
 let fullDetailsOpen = false;
@@ -58,7 +58,7 @@ const LANG_STRINGS = {
     brandTag: 'Email Threat & Forensic Intelligence',
     heroTitle: 'Paste an email, a link, or a message. Get the trace.',
     heroSubtitle: 'Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.',
-    statAnalyzed: 'Analyzed', statFlagged: 'Flagged',
+    statAnalyzed: 'Analyzed', statFlagged: 'Flagged', statOnlineNow: 'Online now',
     tabs: { email: 'Email', link: 'Link', message: 'Message' },
     modes: {
       email: {
@@ -116,13 +116,15 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     malformedUrl: 'The input could not be parsed as a valid URL.',
     malformedUrlFlag: 'Malformed URL',
     serverUnreachable: 'Could not reach the PhishTrace server. Make sure it is running and try again.',
-    fillAllFields: 'Please fill in all fields.'
+    fillAllFields: 'Please fill in all fields.',
+    scanQrLabel: '📷 Scan a QR code instead →',
+    qrNotFound: 'Could not find a QR code in that image — try a clearer photo or a different file.'
   },
   hi: {
     brandTag: 'ईमेल खतरा और फोरेंसिक इंटेलिजेंस',
     heroTitle: 'एक ईमेल, लिंक या संदेश पेस्ट करें। ट्रेस पाएं।',
     heroSubtitle: 'हेडर, प्रमाणीकरण परिणाम, डोमेन संरचना और भाषा पैटर्न का विश्लेषण करके फ़िशिंग, स्पूफिंग और BEC प्रयासों को चिन्हित करता है — और जहां प्रमाण मौजूद हो वहां संभावित मूल स्रोत का पता लगाता है।',
-    statAnalyzed: 'विश्लेषित', statFlagged: 'चिन्हित',
+    statAnalyzed: 'विश्लेषित', statFlagged: 'चिन्हित', statOnlineNow: 'अभी ऑनलाइन',
     tabs: { email: 'ईमेल', link: 'लिंक', message: 'संदेश' },
     modes: {
       email: {
@@ -180,7 +182,9 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     malformedUrl: 'इनपुट को मान्य URL के रूप में पार्स नहीं किया जा सका।',
     malformedUrlFlag: 'अमान्य URL',
     serverUnreachable: 'PhishTrace सर्वर तक नहीं पहुंचा जा सका। सुनिश्चित करें कि यह चल रहा है और फिर से प्रयास करें।',
-    fillAllFields: 'कृपया सभी फ़ील्ड भरें।'
+    fillAllFields: 'कृपया सभी फ़ील्ड भरें।',
+    scanQrLabel: '📷 इसके बजाय QR कोड स्कैन करें →',
+    qrNotFound: 'उस इमेज में कोई QR कोड नहीं मिला — कोई साफ़ फोटो या अलग फ़ाइल आज़माएं।'
   }
 };
 
@@ -194,6 +198,8 @@ function applyStaticTranslations() {
   el('heroSubtitle').textContent = s.heroSubtitle;
   el('statAnalyzedLabel').textContent = s.statAnalyzed;
   el('statFlaggedLabel').textContent = s.statFlagged;
+  el('statVisitorsLabel').textContent = s.statOnlineNow;
+  el('scanQrBtn').textContent = s.scanQrLabel;
   document.querySelectorAll('.mode-tab').forEach(btn => { btn.textContent = s.tabs[btn.dataset.mode]; });
   el('headerAnalysisTitle').textContent = s.headerAnalysisTitle;
   el('geoTitle').textContent = s.geoTitle;
@@ -240,6 +246,7 @@ function setMode(mode) {
   el('emailGrid').style.display = mode === 'email' ? 'grid' : 'none';
   el('traceBox').style.display = mode === 'email' ? 'block' : 'none';
   el('linkBox').style.display = mode === 'link' ? 'block' : 'none';
+  el('scanQrBtn').style.display = mode === 'link' ? 'inline' : 'none';
 }
 
 document.querySelectorAll('.mode-tab').forEach(btn => {
@@ -248,6 +255,31 @@ document.querySelectorAll('.mode-tab').forEach(btn => {
 
 const SAMPLES = { email: SAMPLE_EMAIL, link: SAMPLE_LINK, message: SAMPLE_MESSAGE };
 el('loadSample').onclick = () => { el('emailInput').value = SAMPLES[currentMode]; };
+
+/* ---------- QR code ("quishing") scan — decodes client-side, feeds the URL into Link mode ---------- */
+el('scanQrBtn').onclick = () => el('qrFileInput').click();
+el('qrFileInput').onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const decoded = jsQR(imageData.data, imageData.width, imageData.height);
+    if (decoded && decoded.data) {
+      el('emailInput').value = decoded.data;
+    } else {
+      alert(t().qrNotFound);
+    }
+    e.target.value = ''; // allow re-selecting the same file next time
+  };
+  img.onerror = () => alert(t().qrNotFound);
+  img.src = URL.createObjectURL(file);
+};
 
 /* ---------- Login / Signup (real accounts, backed by the Version 3 server) ---------- */
 const profileMenu = el('profileMenu');
@@ -466,36 +498,55 @@ function extractDomain(addr) {
 }
 
 /* =========================================================
-   2. GEOLOCATION (ipapi.co — free, CORS-enabled)
+   2. GEOLOCATION (ipwho.is + ipapi.co cross-checked — free, CORS-enabled)
    ========================================================= */
 async function geolocateIp(ip) {
   if (!ip) return null;
 
-  // Primary: ipwho.is (free, HTTPS, CORS-enabled, no key needed)
-  try {
-    const res = await fetch(`https://ipwho.is/${ip}`);
-    const data = await res.json();
-    if (data.success !== false && data.latitude) {
-      return {
-        ip, city: data.city, region: data.region, country: data.country,
-        org: data.connection?.isp || data.connection?.org, lat: data.latitude, lon: data.longitude
-      };
-    }
-  } catch (e) {
-    console.warn('ipwho.is lookup failed, trying fallback:', e);
-  }
+  const [primary, secondary] = await Promise.allSettled([
+    fetch(`https://ipwho.is/${ip}`).then(r => r.json()),
+    fetch(`https://ipapi.co/${ip}/json/`).then(r => r.json())
+  ]);
 
-  // Fallback: ipapi.co
-  try {
-    const res = await fetch(`https://ipapi.co/${ip}/json/`);
-    if (!res.ok) throw new Error('geo lookup failed');
-    const data = await res.json();
-    if (data.error) return null;
-    return { ip, city: data.city, region: data.region, country: data.country_name, org: data.org, lat: data.latitude, lon: data.longitude };
-  } catch (e) {
-    console.warn('Geolocation failed:', e);
+  const p = primary.status === 'fulfilled' && primary.value?.success !== false && primary.value?.latitude ? primary.value : null;
+  const s = secondary.status === 'fulfilled' && !secondary.value?.error ? secondary.value : null;
+
+  if (!p && !s) {
+    console.warn('Both geolocation providers failed for', ip);
     return null;
   }
+
+  // Prefer ipwho.is as primary (it also gives us VPN/proxy/hosting signals below);
+  // fall back to ipapi.co alone if only that one succeeded.
+  const base = p || {
+    city: s.city, region: s.region, country: s.country_name,
+    latitude: s.latitude, longitude: s.longitude,
+    connection: { isp: s.org }
+  };
+
+  // Cross-check: do both providers agree on country? Used to show a confidence signal
+  // instead of silently presenting one source's answer as certain.
+  let confidence = 'single-source';
+  if (p && s) {
+    const pCountry = (p.country || '').toLowerCase();
+    const sCountry = (s.country_name || '').toLowerCase();
+    confidence = (pCountry && sCountry && pCountry === sCountry) ? 'cross-checked' : 'disputed';
+  }
+
+  // ipwho.is includes a free "security" block with VPN/proxy/Tor/hosting-datacenter
+  // signals — important for a forensic tool, since a flagged IP means the true
+  // attacker location is very likely NOT what's shown on the map.
+  const sec = p?.security || {};
+
+  return {
+    ip,
+    city: base.city, region: base.region, country: base.country || base.country_name,
+    org: base.connection?.isp || base.connection?.org || s?.org,
+    lat: base.latitude, lon: base.longitude,
+    confidence,
+    isProxy: !!(sec.proxy || sec.vpn || sec.tor),
+    isHosting: !!sec.hosting
+  };
 }
 
 /* =========================================================
@@ -642,10 +693,23 @@ function renderMap(geo) {
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd' }).addTo(mapInstance);
   L.circleMarker([geo.lat, geo.lon], { radius: 8, color: '#e63946', fillColor: '#e63946', fillOpacity: 0.6 }).addTo(mapInstance);
 
+  const confidenceLabel = {
+    'cross-checked': '<span class="pass">✓ Cross-checked (2 providers agree)</span>',
+    'disputed': '<span class="fail">⚠ Providers disagree — treat as approximate</span>',
+    'single-source': '<span class="unknown">Single source (unverified)</span>'
+  }[geo.confidence] || '';
+
+  const trustWarning = (geo.isProxy || geo.isHosting) ? `
+    <div class="header-warning" style="margin-top:12px;margin-bottom:0;">
+      ⚠ This IP is flagged as a ${geo.isProxy ? 'VPN/proxy/Tor exit node' : 'hosting/datacenter IP'} — the location shown is very likely NOT the attacker's real location.
+    </div>` : '';
+
   el('geoMeta').innerHTML = `
     <div><b>IP:</b> ${escapeHtml(geo.ip)}</div>
     <div><b>Location:</b> ${escapeHtml(geo.city || '?')}, ${escapeHtml(geo.region || '')} ${escapeHtml(geo.country || '')}</div>
     <div><b>Network / ISP:</b> ${escapeHtml(geo.org || 'unknown')}</div>
+    <div><b>Confidence:</b> ${confidenceLabel}</div>
+    ${trustWarning}
   `;
 }
 
@@ -710,9 +774,121 @@ function renderVerdict(result) {
 
   el('verdictTitle').textContent = displayVerdict;
   el('verdictText').textContent = result.summary || '';
+  const langRow = el('detectedLangRow');
+  if (result.detected_language) {
+    langRow.style.display = 'block';
+    langRow.textContent = `${s.detectedLanguageLabel}: ${result.detected_language}`;
+  } else {
+    langRow.style.display = 'none';
+  }
   el('flagsRow').innerHTML = (result.red_flags || []).map(f => `<span class="flag-chip">⚑ ${escapeHtml(f)}</span>`).join('');
   el('reportText').textContent = result.forensic_report || result.summary || '';
 }
+
+/* =========================================================
+   4b. VERSION 7 — verdict-triggered actions
+   ========================================================= */
+let lastCase = null; // { mode, subject, result, context }
+
+function setLastCase(mode, subject, result, context) {
+  lastCase = { mode, subject, result, context };
+  const score = result.score;
+  const reviewBox = el('reviewAction');
+  const reportBox = el('reportAction');
+  const actionBox = el('actionBox');
+  el('reviewSentMsg').style.display = 'none';
+
+  const showReview = score !== null && score >= 40 && score <= 60;
+  const showReport = score !== null && score >= 80;
+  reviewBox.style.display = showReview ? 'block' : 'none';
+  reportBox.style.display = showReport ? 'block' : 'none';
+  actionBox.style.display = (showReview || showReport) ? 'block' : 'none';
+}
+
+el('requestReviewBtn')?.addEventListener('click', async () => {
+  if (!lastCase) return;
+  const btn = el('requestReviewBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    await fetch(BACKEND_BASE + '/api/flag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: lastCase.mode,
+        subject: lastCase.subject,
+        score: lastCase.result.score,
+        verdict: lastCase.result.verdict,
+        evidence: lastCase.context
+      })
+    });
+    el('reviewSentMsg').style.display = 'block';
+    btn.style.display = 'none';
+  } catch (e) {
+    console.error(e);
+    btn.textContent = 'Could not send — try again';
+    btn.disabled = false;
+  }
+});
+
+function buildComplaintDraft() {
+  if (!lastCase) return '';
+  const { mode, subject, result, context } = lastCase;
+  const lines = [];
+  lines.push('CYBER FRAUD / PHISHING COMPLAINT — SUPPORTING EVIDENCE');
+  lines.push('Prepared by PhishTrace — review before submitting to cybercrime.gov.in');
+  lines.push('Generated: ' + new Date().toLocaleString());
+  lines.push('');
+  lines.push('Type of content reported: ' + mode.toUpperCase());
+  lines.push('Subject / identifier: ' + subject);
+  lines.push('AI risk score: ' + result.score + ' / 100');
+  lines.push('Verdict: ' + result.verdict);
+  lines.push('');
+  if (mode === 'email' && context.parsed) {
+    const p = context.parsed;
+    lines.push('From: ' + (p.from || 'not available'));
+    lines.push('Return-Path: ' + (p.returnPath || 'not available'));
+    lines.push('SPF / DKIM / DMARC: ' + p.spf + ' / ' + p.dkim + ' / ' + p.dmarc);
+    lines.push('Origin IP: ' + (p.originIp || 'not available'));
+    if (context.geo) {
+      lines.push('Likely origin location: ' + [context.geo.city, context.geo.country].filter(Boolean).join(', ') + (context.geo.org ? ' (' + context.geo.org + ')' : ''));
+    }
+  } else if (mode === 'link' && context.link) {
+    lines.push('URL: ' + context.link.fullUrl);
+    lines.push('Domain: ' + context.link.registrableDomain);
+  } else if (mode === 'message' && context.text) {
+    lines.push('Message text:');
+    lines.push(context.text.slice(0, 1000));
+  }
+  lines.push('');
+  lines.push('Red flags identified:');
+  (result.red_flags || []).forEach(f => lines.push('- ' + f));
+  lines.push('');
+  lines.push('Forensic summary:');
+  lines.push(result.forensic_report || result.summary || '');
+  return lines.join('\n');
+}
+
+el('fileReportBtn')?.addEventListener('click', () => {
+  el('complaintText').value = buildComplaintDraft();
+  el('complaintModal').style.display = 'flex';
+});
+el('complaintClose')?.addEventListener('click', () => { el('complaintModal').style.display = 'none'; });
+el('complaintCopy')?.addEventListener('click', () => {
+  el('complaintText').select();
+  navigator.clipboard?.writeText(el('complaintText').value);
+  const btn = el('complaintCopy');
+  const old = btn.textContent;
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = old, 1500);
+});
+el('complaintDownload')?.addEventListener('click', () => {
+  const blob = new Blob([el('complaintText').value], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'phishtrace-complaint-draft.txt';
+  a.click();
+});
 
 el('seeDetailsBtn').onclick = () => {
   fullDetailsOpen = !fullDetailsOpen;
@@ -728,14 +904,20 @@ function setLoadingStep(i) {
   loadingSteps.forEach((s, idx) => s.classList.toggle('active', idx <= i));
 }
 
+// V6 speed note: saveHistory is intentionally NOT awaited below — it used to block the
+// results screen from appearing until the /api/history write finished, even though the
+// verdict itself was already back from Gemini. It's fired in the background instead so the
+// user sees their result the instant classification completes; a failed save just gets
+// logged, it can't affect what's already on screen. The old fixed sleep() delays between
+// loading steps (300ms/200ms each, purely cosmetic) are also removed — they added up to
+// 400-600ms per check with zero real work happening during them.
+
 async function runEmailAnalysis(raw) {
   const parsed = parseHeaders(raw);
   renderHeaderTable(parsed);
   renderTrace(parsed, null);
 
   setLoadingStep(1);
-  await sleep(300);
-
   setLoadingStep(2);
   const geo = await geolocateIp(parsed.originIp);
   renderMap(geo);
@@ -750,16 +932,15 @@ async function runEmailAnalysis(raw) {
     llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
   }
   renderVerdict(llmResult);
-  await saveHistory({ mode: 'email', subject: parsed.subject, score: llmResult.score ?? 0, ts: Date.now() });
+  setLastCase('email', parsed.subject || '(no subject)', llmResult, { parsed, geo });
+  saveHistory({ mode: 'email', subject: parsed.subject, score: llmResult.score ?? 0, ts: Date.now() });
 }
 
 async function runLinkAnalysis(raw) {
   setLoadingStep(1);
-  await sleep(200);
   const link = analyzeLink(raw);
   setLoadingStep(2);
   renderLinkTable(link);
-  await sleep(200);
 
   setLoadingStep(3);
   let llmResult;
@@ -770,15 +951,14 @@ async function runLinkAnalysis(raw) {
     llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
   }
   renderVerdict(llmResult);
-  await saveHistory({ mode: 'link', subject: link.valid ? link.host : raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
+  const subject = link.valid ? link.host : raw.slice(0, 60);
+  setLastCase('link', subject, llmResult, { link });
+  saveHistory({ mode: 'link', subject, score: llmResult.score ?? 0, ts: Date.now() });
 }
 
 async function runMessageAnalysis(raw) {
   setLoadingStep(1);
-  await sleep(200);
   setLoadingStep(2);
-  await sleep(200);
-
   setLoadingStep(3);
   let llmResult;
   try {
@@ -788,7 +968,8 @@ async function runMessageAnalysis(raw) {
     llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
   }
   renderVerdict(llmResult);
-  await saveHistory({ mode: 'message', subject: raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
+  setLastCase('message', raw.slice(0, 60), llmResult, { text: raw });
+  saveHistory({ mode: 'message', subject: raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
 }
 
 el('analyzeBtn').onclick = async () => {
@@ -815,6 +996,31 @@ el('analyzeBtn').onclick = async () => {
     el('analyzeBtn').disabled = false;
   }
 };
+
+/* ---------- Live visitor counter ---------- */
+function getSessionId() {
+  let id = sessionStorage.getItem('phishtrace_session');
+  if (!id) {
+    id = 'v_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+    sessionStorage.setItem('phishtrace_session', id);
+  }
+  return id;
+}
+async function pingVisitors() {
+  try {
+    const res = await fetch(BACKEND_BASE + '/api/visitors/ping', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: getSessionId() })
+    });
+    const data = await res.json();
+    el('statVisitors').textContent = data.count;
+  } catch (e) {
+    // Non-critical — just leave the last known count showing.
+  }
+}
+pingVisitors();
+setInterval(pingVisitors, 15000);
 
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 

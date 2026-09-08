@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PhishTrace — Reviewer Dashboard</title>
+<style>
+  body{font-family:Arial,sans-serif;background:#0f1720;color:#e8edf1;padding:24px;max-width:900px;margin:0 auto;}
+  h1{font-size:20px;}
+  input{padding:8px;border-radius:6px;border:1px solid #33424f;background:#16212b;color:#e8edf1;width:280px;}
+  button{padding:8px 14px;border-radius:6px;border:none;background:#0e7c86;color:#fff;cursor:pointer;margin-left:8px;}
+  .case{background:#16212b;border:1px solid #263340;border-radius:10px;padding:14px;margin:12px 0;}
+  .case h3{margin:0 0 6px;font-size:15px;}
+  .meta{color:#9fb0bd;font-size:13px;margin-bottom:8px;}
+  pre{white-space:pre-wrap;font-size:12px;background:#0f1720;padding:10px;border-radius:6px;max-height:220px;overflow:auto;}
+  .empty{color:#9fb0bd;margin-top:20px;}
+  .resolve-btn{background:#1d7a3e;}
+</style>
+</head>
+<body>
+  <h1>PhishTrace — Pending Manual Reviews</h1>
+  <div>
+    <input id="adminKey" type="password" placeholder="Admin key" />
+    <button onclick="loadCases()">Load</button>
+  </div>
+  <div id="list"></div>
+
+<script>
+const BACKEND_BASE = ''; // same-origin, since this page is served by the same Express app
+const savedKey = localStorage.getItem('pt_admin_key');
+if (savedKey) document.getElementById('adminKey').value = savedKey;
+
+async function loadCases() {
+  const key = document.getElementById('adminKey').value.trim();
+  if (!key) return alert('Enter the admin key first.');
+  localStorage.setItem('pt_admin_key', key);
+
+  const res = await fetch(BACKEND_BASE + '/api/flags', { headers: { 'x-admin-key': key } });
+  const list = document.getElementById('list');
+  if (!res.ok) {
+    list.innerHTML = '<p class="empty">Wrong admin key, or server error.</p>';
+    return;
+  }
+  const cases = await res.json();
+  if (!cases.length) {
+    list.innerHTML = '<p class="empty">No pending cases.</p>';
+    return;
+  }
+  list.innerHTML = cases.map(c => `
+    <div class="case">
+      <h3>${c.mode.toUpperCase()} — ${escapeHtml(c.subject || '(no subject)')}</h3>
+      <div class="meta">Score: ${c.score} · AI verdict: ${escapeHtml(c.verdict || '—')} · ${new Date(c.createdAt).toLocaleString()}</div>
+      <pre>${escapeHtml(JSON.stringify(c.evidence, null, 2))}</pre>
+      <button class="resolve-btn" onclick="resolve('${c._id}', 'Confirmed Phishing')">Mark: Confirmed Phishing</button>
+      <button onclick="resolve('${c._id}', 'Legitimate')">Mark: Legitimate</button>
+    </div>
+  `).join('');
+}
+
+async function resolve(id, verdict) {
+  const key = document.getElementById('adminKey').value.trim();
+  await fetch(BACKEND_BASE + '/api/flags/' + id + '/resolve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+    body: JSON.stringify({ reviewerVerdict: verdict })
+  });
+  loadCases();
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+</script>
+</body>
+</html>

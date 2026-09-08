@@ -8,6 +8,8 @@
    JSON shape it always has.
    ========================================================= */
 const GEMINI_LANG_NAMES = { en: 'English', hi: 'Hindi (Devanagari script)' };
+const cache = require('./cache');
+const queue = require('./queue');
 
 function langName(lang) {
   return GEMINI_LANG_NAMES[lang] || GEMINI_LANG_NAMES.en;
@@ -15,15 +17,18 @@ function langName(lang) {
 
 function responseSchemaInstructions(lang) {
   const name = langName(lang);
-  return `Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exact schema:
+  return `The content you are analyzing may itself be written in English, Hindi, Hinglish (code-mixed Hindi-English, often typed in Latin script), or a mix of these — this is extremely common in Indian phishing/scam content. Detect scam patterns and red flags regardless of what language or script the content is in; do not lower your scrutiny just because the wording is code-mixed or informally romanized. Identify the input's language/script for the "detected_language" field below.
+
+Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exact schema:
 {
   "score": <integer 0-100, fraud/risk confidence, 0=clearly legitimate, 100=near-certain fraud>,
   "verdict": "<one of exactly these English strings: Legitimate, Suspicious, Likely Phishing, Confirmed Phishing/BEC>",
+  "detected_language": "<a short label for the language/script of the INPUT content itself, e.g. 'English', 'Hindi', 'Hinglish (Latin script)', 'Mixed' — written in ${name}>",
   "summary": "<2-3 sentence explanation of the verdict for a non-technical admin, written in ${name}>",
   "red_flags": ["<short red flag, written in ${name}>", ...up to 6],
   "forensic_report": "<a structured 150-250 word forensic report covering the relevant findings and a recommended action, written in ${name}. Write it like a short investigator's note.>"
 }
-IMPORTANT: the "verdict" field must stay exactly one of the four English strings given above regardless of the response language — only "summary", "red_flags", and "forensic_report" should be written in ${name}.`;
+IMPORTANT: the "verdict" field must stay exactly one of the four English strings given above regardless of the response language — only "detected_language", "summary", "red_flags", and "forensic_report" should be written in ${name}.`;
 }
 
 function buildEmailPrompt({ parsed, geo, bodyText, lang }) {
@@ -134,13 +139,19 @@ async function callGemini(prompt) {
 }
 
 async function classify(mode, payload) {
+  const lang = payload.lang || 'en';
+  const cached = cache.get(mode, lang, payload);
+  if (cached) return { ...cached, cached: true };
+
   let prompt;
   if (mode === 'email') prompt = buildEmailPrompt(payload);
   else if (mode === 'link') prompt = buildLinkPrompt(payload);
   else if (mode === 'message') prompt = buildMessagePrompt(payload);
   else throw new Error('Unknown mode: ' + mode);
 
-  return callGemini(prompt);
+  const result = await queue.enqueue(() => callGemini(prompt));
+  cache.set(mode, lang, payload, result);
+  return result;
 }
 
 module.exports = { classify };

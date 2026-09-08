@@ -41,6 +41,7 @@
       <p id="heroSubtitle">Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.</p>
     </div>
     <div class="stat-strip">
+      <div><div class="n" id="statVisitors">–</div><div class="l" id="statVisitorsLabel">Online now</div></div>
       <div><div class="n" id="statCount">0</div><div class="l" id="statAnalyzedLabel">Analyzed</div></div>
       <div><div class="n" id="statFlagged">0</div><div class="l" id="statFlaggedLabel">Flagged</div></div>
     </div>
@@ -57,7 +58,11 @@
 
 Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
     <div class="input-row-bottom">
-      <button class="sample-link" id="loadSample">Load a sample phishing email →</button>
+      <div class="input-row-left">
+        <button class="sample-link" id="loadSample">Load a sample phishing email →</button>
+        <button class="sample-link" id="scanQrBtn" style="display:none;">📷 Scan a QR code instead →</button>
+        <input type="file" id="qrFileInput" accept="image/*" style="display:none;" />
+      </div>
       <button class="primary" id="analyzeBtn">Analyze Email</button>
     </div>
   </div>
@@ -79,6 +84,18 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
       <button class="qv-toggle" id="seeDetailsBtn">See full details ▾</button>
     </div>
 
+    <div class="panel" id="actionBox" style="display:none; margin-top:14px;">
+      <div id="reviewAction" style="display:none;">
+        <p style="margin:0 0 10px;">This score is borderline — our team can take a closer, human look at it.</p>
+        <button class="primary" id="requestReviewBtn">Send to our team for manual review</button>
+        <p class="modal-error" id="reviewSentMsg" style="display:none;color:var(--ok,#2ecc71);">Sent — our team will review this case.</p>
+      </div>
+      <div id="reportAction" style="display:none;">
+        <p style="margin:0 0 10px;">This looks like a strong match for fraud. You can prepare a report to file with India's Cyber Crime portal.</p>
+        <button class="primary" id="fileReportBtn">Prepare a cyber-crime complaint</button>
+      </div>
+    </div>
+
     <div id="fullDetails" style="display:none;">
       <div class="score-row">
         <div class="score-card">
@@ -88,6 +105,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
         <div class="verdict-card">
           <h3 id="verdictTitle">Verdict</h3>
           <p id="verdictText">—</p>
+          <div class="detected-lang" id="detectedLangRow" style="display:none;"></div>
           <div class="flags-row" id="flagsRow"></div>
         </div>
       </div>
@@ -146,7 +164,21 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
   </div>
 </div>
 
+<div class="modal-overlay" id="complaintModal">
+  <div class="modal">
+    <h3>Cyber-Crime Complaint Draft</h3>
+    <p style="margin-top:0;">Copy this into the report form at <a href="https://cybercrime.gov.in" target="_blank" rel="noopener">cybercrime.gov.in</a>, or download it as a text file. Review the details before submitting — PhishTrace prepares the evidence, you file the report.</p>
+    <textarea id="complaintText" readonly style="width:100%; min-height:260px; font-family:monospace; font-size:12.5px;"></textarea>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="complaintClose">Close</button>
+      <button class="btn-ghost" id="complaintDownload">Download .txt</button>
+      <button class="btn-save" id="complaintCopy">Copy to clipboard</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
