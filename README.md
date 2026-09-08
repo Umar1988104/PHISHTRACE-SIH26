@@ -6,12 +6,13 @@ Built for Smart India Hackathon 2026.
 AI-Powered Email Threat Detection, GeoLocation and Forensic Intelligence Platform — detecting phishing, spoofing, and business-email-compromise (BEC) attacks, and tracing the probable origin of the sending infrastructure.
 
 ## What this MVP does
-- Paste a raw email (headers + body) into the app
-- Parses the `Received:` relay chain to extract the originating IP
-- Validates SPF / DKIM / DMARC authentication results
-- Geolocates the origin IP and plots it on a map
-- Runs an AI-powered fraud classification (Gemini API) producing a risk score, verdict, red flags, and a written forensic report
-- Keeps a local case history of analyzed emails
+Three tabs on one input box — Email, Link, and Message — each using detection logic honest to what evidence actually exists for that input type:
+
+- **Email mode:** parses the `Received:` relay chain to extract the originating IP, validates SPF/DKIM/DMARC authentication results, geolocates the origin IP and plots it on a map
+- **Link mode:** parses the URL's domain/host structure and flags heuristics — raw-IP hostnames, punycode, known shorteners, suspicious keywords, brand-impersonation signals in the hostname (no headers or geolocation exist for a bare link)
+- **Message mode:** no headers or domain to inspect, so detection is pure AI language-pattern analysis (urgency cues, fake KYC/OTP/prize language)
+- All three modes finish with an AI-powered fraud classification (Gemini API) producing a risk score, verdict, red flags, and a written forensic report
+- Keeps a local case history of analyzed items, tagged by mode
 
 ## Tech Stack
 - HTML, CSS, JavaScript (no framework, no build step)
@@ -34,9 +35,9 @@ This is a fully static, client-side app — no backend, no build step.
 5. Click **Analyze Email**
 
 ## MVP Scope
-Included: header parsing, IP/geo extraction, SPF/DKIM/DMARC checks, AI fraud scoring, forensic report generation, relay trace visualization.
+Included: Email/Link/Message tabbed input, header parsing, IP/geo extraction, SPF/DKIM/DMARC checks, link domain/heuristic analysis, AI fraud scoring for all three modes, forensic report generation, relay trace visualization.
 
-Not yet included (future scope): WHOIS/DNS deep lookups, threat-intel/blacklist correlation, graph-based multi-email attribution, chain-of-custody/evidence handling, real-time inbox monitoring.
+Not yet included (future scope): WHOIS/DNS deep lookups, threat-intel/blacklist correlation, graph-based multi-email attribution, chain-of-custody/evidence handling, real-time inbox monitoring, optional login/accounts, shared backend API key.
 
 ## Team
 Team PhishTrace

@@ -28,8 +28,8 @@
 <main>
   <div class="intro">
     <div>
-      <h1>Paste a raw email. Get the trace.</h1>
-      <p>Analyzes headers, authentication results, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin of the sending infrastructure.</p>
+      <h1>Paste an email, a link, or a message. Get the trace.</h1>
+      <p>Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.</p>
     </div>
     <div class="stat-strip">
       <div><div class="n" id="statCount">0</div><div class="l">Analyzed</div></div>
@@ -38,7 +38,12 @@
   </div>
 
   <div class="panel">
-    <div class="panel-title">Raw Email Input</div>
+    <div class="mode-tabs" id="modeTabs">
+      <button class="mode-tab active" data-mode="email">Email</button>
+      <button class="mode-tab" data-mode="link">Link</button>
+      <button class="mode-tab" data-mode="message">Message</button>
+    </div>
+    <div class="panel-title" id="inputTitle">Raw Email Input</div>
     <textarea id="emailInput" placeholder="Paste the full raw email source here — including headers (Received, From, Return-Path, DKIM-Signature, etc.) followed by the body.
 
 Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
@@ -49,10 +54,10 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
   </div>
 
   <div class="panel" id="loadingBox">
-    <div class="loading-line" data-step="0"><span class="dot"></span> Parsing headers and relay chain…</div>
-    <div class="loading-line" data-step="1"><span class="dot"></span> Validating SPF / DKIM / DMARC…</div>
-    <div class="loading-line" data-step="2"><span class="dot"></span> Resolving origin IP geolocation…</div>
-    <div class="loading-line" data-step="3"><span class="dot"></span> Running AI fraud classification…</div>
+    <div class="loading-line" data-step="0"><span class="dot"></span> <span id="loadStep0">Parsing headers and relay chain…</span></div>
+    <div class="loading-line" data-step="1"><span class="dot"></span> <span id="loadStep1">Validating SPF / DKIM / DMARC…</span></div>
+    <div class="loading-line" data-step="2"><span class="dot"></span> <span id="loadStep2">Resolving origin IP geolocation…</span></div>
+    <div class="loading-line" data-step="3"><span class="dot"></span> <span id="loadStep3">Running AI fraud classification…</span></div>
   </div>
 
   <div id="results">
@@ -68,7 +73,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
       </div>
     </div>
 
-    <div class="grid-2">
+    <div class="grid-2" id="emailGrid">
       <div class="panel">
         <div class="panel-title">Header &amp; Protocol Analysis</div>
         <table id="headerTable"></table>
@@ -80,9 +85,14 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
       </div>
     </div>
 
-    <div class="panel" style="margin-bottom:20px;">
+    <div class="panel" id="traceBox" style="margin-bottom:20px;">
       <div class="panel-title">Relay / Trace Path</div>
       <ul class="trace-list" id="traceList"></ul>
+    </div>
+
+    <div class="panel" id="linkBox" style="margin-bottom:20px;display:none;">
+      <div class="panel-title">Link &amp; Domain Analysis</div>
+      <table id="linkTable"></table>
     </div>
 
     <div class="report-box">

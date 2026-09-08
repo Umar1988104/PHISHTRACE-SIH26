@@ -53,7 +53,79 @@ Failure to verify will result in permanent blocking of your account and reportin
 Regards,
 HDFC Bank Security Team`;
 
-el('loadSample').onclick = () => { el('emailInput').value = SAMPLE_EMAIL; };
+/* ---------- Sample link & message ---------- */
+const SAMPLE_LINK = `http://hdfc-kyc-verify.secure-bank-update.info/login?ref=8827aa`;
+const SAMPLE_MESSAGE = `Dear Customer, your UPI ID will be BLOCKED today due to KYC expiry. To avoid suspension, update your details immediately: http://paytm-kyc-update.in/verify Do not ignore, action required within 2 hours.`;
+
+/* ---------- Mode (tab) handling ---------- */
+let currentMode = 'email';
+
+const MODE_COPY = {
+  email: {
+    title: 'Raw Email Input',
+    placeholder: `Paste the full raw email source here — including headers (Received, From, Return-Path, DKIM-Signature, etc.) followed by the body.
+
+Tip: In Gmail, use 'Show original' to copy the raw source.`,
+    sampleLabel: 'Load a sample phishing email →',
+    analyzeLabel: 'Analyze Email',
+    sample: SAMPLE_EMAIL,
+    loadingSteps: [
+      'Parsing headers and relay chain…',
+      'Validating SPF / DKIM / DMARC…',
+      'Resolving origin IP geolocation…',
+      'Running AI fraud classification…'
+    ]
+  },
+  link: {
+    title: 'Link to Check',
+    placeholder: `Paste the suspicious link here — a full URL including http:// or https://.`,
+    sampleLabel: 'Load a sample phishing link →',
+    analyzeLabel: 'Analyze Link',
+    sample: SAMPLE_LINK,
+    loadingSteps: [
+      'Parsing URL and domain structure…',
+      'Checking redirect / shortener patterns…',
+      'Screening for lookalike & typosquat signals…',
+      'Running AI risk classification…'
+    ]
+  },
+  message: {
+    title: 'Message to Check',
+    placeholder: `Paste the suspicious SMS / WhatsApp / chat message text here.`,
+    sampleLabel: 'Load a sample scam message →',
+    analyzeLabel: 'Analyze Message',
+    sample: SAMPLE_MESSAGE,
+    loadingSteps: [
+      'Reading message content…',
+      'Scanning for urgency & scam-language cues…',
+      'Cross-checking known fraud patterns…',
+      'Running AI risk classification…'
+    ]
+  }
+};
+
+function setMode(mode) {
+  currentMode = mode;
+  const copy = MODE_COPY[mode];
+  document.querySelectorAll('.mode-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+  el('inputTitle').textContent = copy.title;
+  el('emailInput').placeholder = copy.placeholder;
+  el('loadSample').textContent = copy.sampleLabel;
+  el('analyzeBtn').textContent = copy.analyzeLabel;
+  el('emailInput').value = '';
+  el('results').style.display = 'none';
+  for (let i = 0; i < 4; i++) el('loadStep' + i).textContent = copy.loadingSteps[i];
+  // Email-only panels: header table, geolocation/map, relay trace
+  el('emailGrid').style.display = mode === 'email' ? 'grid' : 'none';
+  el('traceBox').style.display = mode === 'email' ? 'block' : 'none';
+  el('linkBox').style.display = mode === 'link' ? 'block' : 'none';
+}
+
+document.querySelectorAll('.mode-tab').forEach(btn => {
+  btn.onclick = () => setMode(btn.dataset.mode);
+});
+
+el('loadSample').onclick = () => { el('emailInput').value = MODE_COPY[currentMode].sample; };
 
 /* ---------- History (localStorage) ---------- */
 function getHistory(){ return JSON.parse(localStorage.getItem('phishtrace_history') || '[]'); }
@@ -71,9 +143,13 @@ function renderHistory(){
   el('historyPanel').style.display = 'block';
   el('historyList').innerHTML = h.map(item => `
     <div class="history-item">
-      <span>${escapeHtml(item.subject || '(no subject)')}</span>
+      <span>${modeTag(item.mode)} ${escapeHtml(item.subject || '(no subject)')}</span>
       <span class="h-score" style="color:${scoreColor(item.score)}">${item.score}</span>
     </div>`).join('');
+}
+function modeTag(mode) {
+  const labels = { email: 'EMAIL', link: 'LINK', message: 'MSG' };
+  return `<span style="color:var(--muted)">[${labels[mode] || 'EMAIL'}]</span>`;
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function scoreColor(score){
@@ -178,51 +254,61 @@ async function geolocateIp(ip) {
 }
 
 /* =========================================================
-   3. LLM CLASSIFICATION — Gemini API
+   2b. LINK ANALYSIS (domain / redirect heuristics — no headers exist for a link)
    ========================================================= */
-async function classifyWithLLM(parsed, geo) {
-  const apiKey = localStorage.getItem('phishtrace_gemini_key');
-  if (!apiKey) {
-    return {
-      score: null,
-      verdict: 'API key required',
-      summary: 'Add your free Gemini API key (⚙ button, top right — get one at aistudio.google.com/apikey) to run AI classification. Header-based checks below are still fully computed.',
-      red_flags: []
-    };
-  }
+const URL_SHORTENERS = ['bit.ly','tinyurl.com','t.co','is.gd','ow.ly','buff.ly','rebrand.ly','cutt.ly','shorte.st','rb.gy'];
+const WATCHED_BRANDS = ['hdfc','sbi','icici','axis','paytm','upi','kotak','pnb','rbi','amazon','flipkart','google','microsoft','paypal','whatsapp'];
 
-  const fromDomain = extractDomain(parsed.from);
-  const returnPathDomain = extractDomain(parsed.returnPath);
-  const replyToDomain = extractDomain(parsed.replyTo);
+function analyzeLink(rawInput) {
+  let input = rawInput.trim();
+  if (!/^https?:\/\//i.test(input)) input = 'http://' + input;
+  let u;
+  try { u = new URL(input); } catch (e) { return { valid: false, raw: rawInput }; }
 
-  const prompt = `You are an email forensic security analyst. Analyze this email for phishing, spoofing, impersonation, or business-email-compromise (BEC) indicators. Be specific and reference the actual header/body evidence given.
+  const host = u.hostname.toLowerCase();
+  const labels = host.split('.');
+  const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  const isPunycode = host.includes('xn--');
+  const isShortener = URL_SHORTENERS.includes(host);
+  const subdomainCount = Math.max(0, labels.length - 2);
+  const hyphenCount = (host.match(/-/g) || []).length;
+  const noHttps = u.protocol !== 'https:';
+  const pathAndQuery = (u.pathname + u.search).toLowerCase();
+  const suspiciousKeywords = ['verify','login','secure','update','kyc','otp','confirm','account','suspend','unlock'].filter(k => pathAndQuery.includes(k) || host.includes(k));
+  const registrableDomain = labels.slice(-2).join('.');
+  const brandInHostButNotRegistrable = WATCHED_BRANDS.filter(b => host.includes(b) && !registrableDomain.startsWith(b));
 
-PARSED HEADER DATA:
-- From: ${parsed.from}
-- Return-Path: ${parsed.returnPath}
-- Reply-To: ${parsed.replyTo}
-- Subject: ${parsed.subject}
-- SPF: ${parsed.spf}
-- DKIM: ${parsed.dkim}
-- DMARC: ${parsed.dmarc}
-- From-domain vs Return-Path-domain mismatch: ${fromDomain !== returnPathDomain}
-- From-domain vs Reply-To-domain mismatch: ${fromDomain !== replyToDomain}
-- Origin IP: ${parsed.originIp || 'not found'}
-- Origin Geolocation: ${geo ? `${geo.city || '?'}, ${geo.country || '?'} (${geo.org || 'unknown org'})` : 'unresolved'}
-- Number of relay hops: ${parsed.relayHops.length}
+  return {
+    valid: true, raw: rawInput, fullUrl: u.href, protocol: u.protocol, host, registrableDomain,
+    isIp, isPunycode, isShortener, subdomainCount, hyphenCount, noHttps, suspiciousKeywords,
+    brandInHostButNotRegistrable, pathAndQuery: u.pathname + u.search
+  };
+}
 
-EMAIL BODY:
-${parsed.bodyText.slice(0, 3000)}
+/* =========================================================
+   3. LLM CLASSIFICATION — Gemini API (shared caller)
+   ========================================================= */
+function noApiKeyResult(evidenceNote) {
+  return {
+    score: null,
+    verdict: 'API key required',
+    summary: `Add your free Gemini API key (⚙ button, top right — get one at aistudio.google.com/apikey) to run AI classification. ${evidenceNote}`,
+    red_flags: [],
+    forensic_report: ''
+  };
+}
 
-Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exact schema:
+const RESPONSE_SCHEMA_INSTRUCTIONS = `Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exact schema:
 {
   "score": <integer 0-100, fraud/risk confidence, 0=clearly legitimate, 100=near-certain fraud>,
   "verdict": "<one of: Legitimate, Suspicious, Likely Phishing, Confirmed Phishing/BEC>",
   "summary": "<2-3 sentence plain-English explanation of the verdict for a non-technical admin>",
   "red_flags": ["<short red flag>", "<short red flag>", ...up to 6],
-  "forensic_report": "<a structured 150-250 word forensic report covering: authentication findings, sender identity analysis, origin/infrastructure assessment, and a recommended action. Write it like a short investigator's note.>"
+  "forensic_report": "<a structured 150-250 word forensic report covering the relevant findings and a recommended action. Write it like a short investigator's note.>"
 }`;
 
+async function callGeminiJSON(prompt) {
+  const apiKey = localStorage.getItem('phishtrace_gemini_key');
   const callGemini = () => fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
     {
@@ -256,6 +342,78 @@ Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exa
   if (!text) throw new Error('Empty response from Gemini API');
   const clean = text.replace(/```json|```/g, '').trim();
   return JSON.parse(clean);
+}
+
+async function classifyEmailWithLLM(parsed, geo) {
+  if (!localStorage.getItem('phishtrace_gemini_key')) return noApiKeyResult('Header-based checks below are still fully computed.');
+
+  const fromDomain = extractDomain(parsed.from);
+  const returnPathDomain = extractDomain(parsed.returnPath);
+  const replyToDomain = extractDomain(parsed.replyTo);
+
+  const prompt = `You are an email forensic security analyst. Analyze this email for phishing, spoofing, impersonation, or business-email-compromise (BEC) indicators. Be specific and reference the actual header/body evidence given.
+
+PARSED HEADER DATA:
+- From: ${parsed.from}
+- Return-Path: ${parsed.returnPath}
+- Reply-To: ${parsed.replyTo}
+- Subject: ${parsed.subject}
+- SPF: ${parsed.spf}
+- DKIM: ${parsed.dkim}
+- DMARC: ${parsed.dmarc}
+- From-domain vs Return-Path-domain mismatch: ${fromDomain !== returnPathDomain}
+- From-domain vs Reply-To-domain mismatch: ${fromDomain !== replyToDomain}
+- Origin IP: ${parsed.originIp || 'not found'}
+- Origin Geolocation: ${geo ? `${geo.city || '?'}, ${geo.country || '?'} (${geo.org || 'unknown org'})` : 'unresolved'}
+- Number of relay hops: ${parsed.relayHops.length}
+
+EMAIL BODY:
+${parsed.bodyText.slice(0, 3000)}
+
+${RESPONSE_SCHEMA_INSTRUCTIONS}`;
+
+  return callGeminiJSON(prompt);
+}
+
+async function classifyLinkWithLLM(link) {
+  if (!localStorage.getItem('phishtrace_gemini_key')) return noApiKeyResult('Domain/pattern checks below are still fully computed.');
+
+  if (!link.valid) {
+    return { score: 100, verdict: 'Suspicious', summary: 'The input could not be parsed as a valid URL.', red_flags: ['Malformed URL'], forensic_report: '' };
+  }
+
+  const prompt = `You are a URL/domain forensic security analyst. Analyze this link for phishing, spoofing, or scam indicators. There are no email headers available for a bare link — base your assessment only on the domain, path, and structural signals given. Be specific and reference the actual evidence.
+
+LINK EVIDENCE:
+- Full URL: ${link.fullUrl}
+- Hostname: ${link.host}
+- Registrable domain: ${link.registrableDomain}
+- Uses HTTPS: ${!link.noHttps}
+- Hostname is a raw IP address: ${link.isIp}
+- Hostname uses punycode (possible homograph attack): ${link.isPunycode}
+- Known URL shortener: ${link.isShortener}
+- Number of subdomain labels: ${link.subdomainCount}
+- Hyphen count in hostname: ${link.hyphenCount}
+- Suspicious keywords found in host/path (verify, login, secure, kyc, otp, etc.): ${link.suspiciousKeywords.join(', ') || 'none'}
+- Well-known brand name appearing in hostname but NOT as the actual registrable domain (possible impersonation): ${link.brandInHostButNotRegistrable.join(', ') || 'none'}
+- Path/query: ${link.pathAndQuery}
+
+${RESPONSE_SCHEMA_INSTRUCTIONS}`;
+
+  return callGeminiJSON(prompt);
+}
+
+async function classifyMessageWithLLM(text) {
+  if (!localStorage.getItem('phishtrace_gemini_key')) return noApiKeyResult('No headers exist for a plain message, so AI language analysis is required to produce a verdict.');
+
+  const prompt = `You are a fraud-messaging analyst reviewing a plain SMS/WhatsApp-style text message for scam indicators. There are no headers or sender metadata for a plain message — base your assessment purely on language patterns: urgency/threat cues, fake prize or refund language, KYC/OTP/UPI-block scare tactics, requests for money or credentials, suspicious links, impersonation of a bank/government/company, and generic mass-message phrasing. Be specific and reference the actual wording.
+
+MESSAGE TEXT:
+${text.slice(0, 3000)}
+
+${RESPONSE_SCHEMA_INSTRUCTIONS}`;
+
+  return callGeminiJSON(prompt);
 }
 
 /* =========================================================
@@ -315,6 +473,28 @@ function renderMap(geo) {
   `;
 }
 
+function renderLinkTable(link) {
+  if (!link.valid) {
+    el('linkTable').innerHTML = `<tr><td>Input</td><td class="fail">Could not be parsed as a valid URL</td></tr>`;
+    return;
+  }
+  const yn = (b, warnIfTrue = true) => `<span class="${b === (warnIfTrue) ? 'fail' : 'pass'}">${b ? 'YES' : 'NO'}</span>`;
+  const rows = [
+    ['Full URL', escapeHtml(link.fullUrl)],
+    ['Hostname', escapeHtml(link.host)],
+    ['Registrable domain', escapeHtml(link.registrableDomain)],
+    ['Uses HTTPS', link.noHttps ? '<span class="fail">NO</span>' : '<span class="pass">YES</span>'],
+    ['Raw IP as hostname', yn(link.isIp)],
+    ['Punycode hostname', yn(link.isPunycode)],
+    ['Known URL shortener', yn(link.isShortener)],
+    ['Subdomain labels', String(link.subdomainCount)],
+    ['Hyphens in hostname', String(link.hyphenCount)],
+    ['Suspicious keywords', link.suspiciousKeywords.length ? `<span class="fail">${escapeHtml(link.suspiciousKeywords.join(', '))}</span>` : '<span class="pass">none</span>'],
+    ['Brand impersonation signal', link.brandInHostButNotRegistrable.length ? `<span class="fail">${escapeHtml(link.brandInHostButNotRegistrable.join(', '))}</span>` : '<span class="pass">none</span>']
+  ];
+  el('linkTable').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+}
+
 function renderVerdict(result) {
   const score = result.score;
   el('scoreNum').textContent = score === null ? '—' : score;
@@ -343,9 +523,73 @@ function setLoadingStep(i) {
   loadingSteps.forEach((s, idx) => s.classList.toggle('active', idx <= i));
 }
 
+async function runEmailAnalysis(raw) {
+  const parsed = parseHeaders(raw);
+  renderHeaderTable(parsed);
+  renderTrace(parsed, null);
+
+  setLoadingStep(1);
+  await sleep(300);
+
+  setLoadingStep(2);
+  const geo = await geolocateIp(parsed.originIp);
+  renderMap(geo);
+  renderTrace(parsed, geo);
+
+  setLoadingStep(3);
+  let llmResult;
+  try {
+    llmResult = await classifyEmailWithLLM(parsed, geo);
+  } catch (e) {
+    console.error(e);
+    llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
+  }
+  renderVerdict(llmResult);
+  saveHistory({ mode: 'email', subject: parsed.subject, score: llmResult.score ?? 0, ts: Date.now() });
+}
+
+async function runLinkAnalysis(raw) {
+  setLoadingStep(1);
+  await sleep(200);
+  const link = analyzeLink(raw);
+  setLoadingStep(2);
+  renderLinkTable(link);
+  await sleep(200);
+
+  setLoadingStep(3);
+  let llmResult;
+  try {
+    llmResult = await classifyLinkWithLLM(link);
+  } catch (e) {
+    console.error(e);
+    llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
+  }
+  renderVerdict(llmResult);
+  saveHistory({ mode: 'link', subject: link.valid ? link.host : raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
+}
+
+async function runMessageAnalysis(raw) {
+  setLoadingStep(1);
+  await sleep(200);
+  setLoadingStep(2);
+  await sleep(200);
+
+  setLoadingStep(3);
+  let llmResult;
+  try {
+    llmResult = await classifyMessageWithLLM(raw);
+  } catch (e) {
+    console.error(e);
+    llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
+  }
+  renderVerdict(llmResult);
+  saveHistory({ mode: 'message', subject: raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
+}
+
 el('analyzeBtn').onclick = async () => {
   const raw = el('emailInput').value.trim();
-  if (!raw) { alert('Paste a raw email first.'); return; }
+  const placeholders = { email: 'Paste a raw email first.', link: 'Paste a link first.', message: 'Paste a message first.' };
+  if (!raw) { alert(placeholders[currentMode]); return; }
 
   el('analyzeBtn').disabled = true;
   el('results').style.display = 'none';
@@ -353,36 +597,16 @@ el('analyzeBtn').onclick = async () => {
   setLoadingStep(0);
 
   try {
-    const parsed = parseHeaders(raw);
-    renderHeaderTable(parsed);
-    renderTrace(parsed, null);
-
-    setLoadingStep(1);
-    await sleep(300);
-
-    setLoadingStep(2);
-    const geo = await geolocateIp(parsed.originIp);
-    renderMap(geo);
-    renderTrace(parsed, geo);
-
-    setLoadingStep(3);
-    let llmResult;
-    try {
-      llmResult = await classifyWithLLM(parsed, geo);
-    } catch (e) {
-      console.error(e);
-      llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
-    }
-    renderVerdict(llmResult);
+    if (currentMode === 'email') await runEmailAnalysis(raw);
+    else if (currentMode === 'link') await runLinkAnalysis(raw);
+    else await runMessageAnalysis(raw);
 
     el('loadingBox').style.display = 'none';
     el('results').style.display = 'block';
-
-    saveHistory({ subject: parsed.subject, score: llmResult.score ?? 0, ts: Date.now() });
   } catch (err) {
     console.error(err);
     el('loadingBox').style.display = 'none';
-    alert('Something went wrong parsing this email: ' + err.message);
+    alert('Something went wrong during analysis: ' + err.message);
   } finally {
     el('analyzeBtn').disabled = false;
   }
@@ -390,4 +614,5 @@ el('analyzeBtn').onclick = async () => {
 
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
+setMode('email');
 renderHistory();
