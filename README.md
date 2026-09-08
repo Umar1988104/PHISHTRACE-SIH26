@@ -13,6 +13,9 @@ Three tabs on one input box — Email, Link, and Message — each using detectio
 - **Message mode:** no headers or domain to inspect, so detection is pure AI language-pattern analysis (urgency cues, fake KYC/OTP/prize language)
 - All three modes finish with an AI-powered fraud classification (Gemini API) producing a risk score, verdict, red flags, and a written forensic report
 - Keeps a local case history of analyzed items, tagged by mode
+- **Progressive-disclosure results:** a one-line verdict with an icon appears first; a "See full details" toggle reveals the score gauge, red flags, header/geo/trace panels, and full report
+- **Optional login:** a profile icon unlocks personal case history as a convenience — never required to use the core checking feature. This is a client-side-only account (name stored in this browser) until the Version 3 backend adds real accounts
+- **Multilingual UI:** switch between English and Hindi via the language selector in the header — this also changes the language Gemini writes the summary/red flags/forensic report in (the verdict category itself stays a fixed internal value so scoring logic is unaffected)
 
 ## Tech Stack
 - HTML, CSS, JavaScript (no framework, no build step)
@@ -35,17 +38,9 @@ This is a fully static, client-side app — no backend, no build step.
 5. Click **Analyze Email**
 
 ## MVP Scope
-Included: Email/Link/Message tabbed input, header parsing, IP/geo extraction, SPF/DKIM/DMARC checks, link domain/heuristic analysis, AI fraud scoring for all three modes, forensic report generation, relay trace visualization.
+Included: Email/Link/Message tabbed input, header parsing, IP/geo extraction, SPF/DKIM/DMARC checks, link domain/heuristic analysis, AI fraud scoring for all three modes, forensic report generation, relay trace visualization, progressive-disclosure results UI, optional client-side login gating case history, English/Hindi UI language switch.
 
-Not yet included (future scope): WHOIS/DNS deep lookups, threat-intel/blacklist correlation, graph-based multi-email attribution, chain-of-custody/evidence handling, real-time inbox monitoring, optional login/accounts, shared backend API key.
+Not yet included (future scope): WHOIS/DNS deep lookups, threat-intel/blacklist correlation, graph-based multi-email attribution, chain-of-custody/evidence handling, real-time inbox monitoring, real backend accounts/database, shared backend API key.
 
 ## Team
 Team PhishTrace
-
-## Team Members
-Jayanti Mishra
-Aastha Baurai
-Trilotma
-Aahladita
-Rishab Singh
-Mohammad Umar Sikandri

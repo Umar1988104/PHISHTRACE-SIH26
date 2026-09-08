@@ -16,11 +16,21 @@
     <div class="brand-mark">PT</div>
     <div>
       <div class="brand-name">PHISHTRACE</div>
-      <div class="brand-tag">Email Threat &amp; Forensic Intelligence</div>
+      <div class="brand-tag" id="brandTag">Email Threat &amp; Forensic Intelligence</div>
     </div>
   </div>
   <div class="header-right">
-    <span class="mvp-pill">MVP BUILD</span>
+    <select id="langSelect" class="lang-select" aria-label="Language">
+      <option value="en">EN</option>
+      <option value="hi">हिं</option>
+    </select>
+    <div class="profile-wrap">
+      <button id="profileBtn">👤 Login</button>
+      <div class="profile-menu" id="profileMenu">
+        <button id="menuHistory">History</button>
+        <button id="menuLogout">Log Out</button>
+      </div>
+    </div>
     <button id="apiKeyBtn">⚙ API Key</button>
   </div>
 </header>
@@ -28,12 +38,12 @@
 <main>
   <div class="intro">
     <div>
-      <h1>Paste an email, a link, or a message. Get the trace.</h1>
-      <p>Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.</p>
+      <h1 id="heroTitle">Paste an email, a link, or a message. Get the trace.</h1>
+      <p id="heroSubtitle">Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.</p>
     </div>
     <div class="stat-strip">
-      <div><div class="n" id="statCount">0</div><div class="l">Analyzed</div></div>
-      <div><div class="n" id="statFlagged">0</div><div class="l">Flagged</div></div>
+      <div><div class="n" id="statCount">0</div><div class="l" id="statAnalyzedLabel">Analyzed</div></div>
+      <div><div class="n" id="statFlagged">0</div><div class="l" id="statFlaggedLabel">Flagged</div></div>
     </div>
   </div>
 
@@ -61,62 +71,85 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
   </div>
 
   <div id="results">
-    <div class="score-row">
-      <div class="score-card">
-        <div class="score-ring" id="scoreRing"><div class="num" id="scoreNum">--</div></div>
-        <div class="score-label" id="scoreLabel">—</div>
+    <div class="quick-verdict" id="quickVerdict">
+      <div class="qv-icon" id="qvIcon">?</div>
+      <div class="qv-body">
+        <div class="qv-label" id="qvLabel">Verdict</div>
+        <div class="qv-text" id="qvText">—</div>
       </div>
-      <div class="verdict-card">
-        <h3 id="verdictTitle">Verdict</h3>
-        <p id="verdictText">—</p>
-        <div class="flags-row" id="flagsRow"></div>
-      </div>
+      <button class="qv-toggle" id="seeDetailsBtn">See full details ▾</button>
     </div>
 
-    <div class="grid-2" id="emailGrid">
-      <div class="panel">
-        <div class="panel-title">Header &amp; Protocol Analysis</div>
-        <table id="headerTable"></table>
+    <div id="fullDetails" style="display:none;">
+      <div class="score-row">
+        <div class="score-card">
+          <div class="score-ring" id="scoreRing"><div class="num" id="scoreNum">--</div></div>
+          <div class="score-label" id="scoreLabel">—</div>
+        </div>
+        <div class="verdict-card">
+          <h3 id="verdictTitle">Verdict</h3>
+          <p id="verdictText">—</p>
+          <div class="flags-row" id="flagsRow"></div>
+        </div>
       </div>
-      <div class="panel">
-        <div class="panel-title">Origin Geolocation</div>
-        <div id="map"></div>
-        <div class="geo-meta" id="geoMeta"></div>
+
+      <div class="grid-2" id="emailGrid">
+        <div class="panel">
+          <div class="panel-title" id="headerAnalysisTitle">Header &amp; Protocol Analysis</div>
+          <table id="headerTable"></table>
+        </div>
+        <div class="panel">
+          <div class="panel-title" id="geoTitle">Origin Geolocation</div>
+          <div id="map"></div>
+          <div class="geo-meta" id="geoMeta"></div>
+        </div>
       </div>
-    </div>
 
-    <div class="panel" id="traceBox" style="margin-bottom:20px;">
-      <div class="panel-title">Relay / Trace Path</div>
-      <ul class="trace-list" id="traceList"></ul>
-    </div>
+      <div class="panel" id="traceBox" style="margin-bottom:20px;">
+        <div class="panel-title" id="traceTitle">Relay / Trace Path</div>
+        <ul class="trace-list" id="traceList"></ul>
+      </div>
 
-    <div class="panel" id="linkBox" style="margin-bottom:20px;display:none;">
-      <div class="panel-title">Link &amp; Domain Analysis</div>
-      <table id="linkTable"></table>
-    </div>
+      <div class="panel" id="linkBox" style="margin-bottom:20px;display:none;">
+        <div class="panel-title" id="linkAnalysisTitle">Link &amp; Domain Analysis</div>
+        <table id="linkTable"></table>
+      </div>
 
-    <div class="report-box">
-      <div class="panel-title">Forensic Report (AI-Generated)</div>
-      <div class="body-text" id="reportText"></div>
+      <div class="report-box">
+        <div class="panel-title" id="reportTitle">Forensic Report (AI-Generated)</div>
+        <div class="body-text" id="reportText"></div>
+      </div>
     </div>
   </div>
 
   <div class="panel" id="historyPanel" style="display:none;">
-    <div class="panel-title">Case History</div>
+    <div class="panel-title" id="historyTitle">Case History</div>
     <div id="historyList"></div>
   </div>
 </main>
 
-<footer>PHISHTRACE — SIH 2026 MVP · Analysis assists investigation, does not replace it · Built with HTML/CSS/JS</footer>
+<footer id="footerText">PHISHTRACE — SIH 2026 · Analysis assists investigation, does not replace it · Built with HTML/CSS/JS</footer>
 
 <div class="modal-overlay" id="apiModal">
   <div class="modal">
-    <h3>Gemini API Key</h3>
-    <p>Get a free key at aistudio.google.com/apikey. Stored only in your browser's localStorage — never sent anywhere except directly to Google's API.</p>
+    <h3 id="apiModalTitle">Gemini API Key</h3>
+    <p id="apiModalDesc">Get a free key at aistudio.google.com/apikey. Stored only in your browser's localStorage — never sent anywhere except directly to Google's API.</p>
     <input type="password" id="apiKeyInput" placeholder="AIza..." />
     <div class="modal-actions">
       <button class="btn-ghost" id="apiCancel">Cancel</button>
       <button class="btn-save" id="apiSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <h3 id="loginModalTitle">Log In</h3>
+    <p id="loginModalDesc">Optional — just to unlock your case history on this device. No password needed for this build; nothing is sent anywhere.</p>
+    <input type="text" id="loginNameInput" placeholder="Your name" />
+    <div class="modal-actions">
+      <button class="btn-ghost" id="loginCancel">Cancel</button>
+      <button class="btn-save" id="loginSave">Log In</button>
     </div>
   </div>
 </div>
