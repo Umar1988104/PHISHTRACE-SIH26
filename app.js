@@ -121,6 +121,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     geminiLanguageName: 'English',
     apiKeyRequiredIntro: 'Add your free Gemini API key (⚙ button, top right — get one at aistudio.google.com/apikey) to run AI classification.',
     evidenceNoteEmail: 'Header-based checks below are still fully computed.',
+    noHeadersWarning: '⚠ No raw email headers were detected in this input — this looks like the visible message text was pasted rather than the true raw source. Authentication and origin checks could not run, so the verdict below relies on message content only. For a fully verified result, use your email client\u2019s "Show original" / "View source" option and paste that instead.',
     evidenceNoteLink: 'Domain/pattern checks below are still fully computed.',
     evidenceNoteMessage: 'No headers exist for a plain message, so AI language analysis is required to produce a verdict.',
     malformedUrl: 'The input could not be parsed as a valid URL.',
@@ -185,6 +186,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     geminiLanguageName: 'Hindi (Devanagari script)',
     apiKeyRequiredIntro: 'AI वर्गीकरण चलाने के लिए अपनी निःशुल्क Gemini API कुंजी जोड़ें (ऊपर दाईं ओर ⚙ बटन — aistudio.google.com/apikey से प्राप्त करें)।',
     evidenceNoteEmail: 'नीचे दिए गए हेडर-आधारित चेक फिर भी पूरी तरह से किए गए हैं।',
+    noHeadersWarning: '⚠ इस इनपुट में कोई रॉ ईमेल हेडर नहीं मिला — ऐसा लगता है कि दिखने वाला संदेश टेक्स्ट पेस्ट किया गया है, असली रॉ स्रोत नहीं। प्रमाणीकरण और मूल स्रोत की जांच नहीं हो सकी, इसलिए नीचे दिया गया निर्णय केवल संदेश की सामग्री पर आधारित है। पूरी तरह सत्यापित परिणाम के लिए, अपने ईमेल क्लाइंट के "मूल दिखाएं" / "स्रोत देखें" विकल्प का उपयोग करें।',
     evidenceNoteLink: 'नीचे दिए गए डोमेन/पैटर्न चेक फिर भी पूरी तरह से किए गए हैं।',
     evidenceNoteMessage: 'सादे संदेश के लिए कोई हेडर मौजूद नहीं है, इसलिए निर्णय देने के लिए AI भाषा विश्लेषण आवश्यक है।',
     malformedUrl: 'इनपुट को मान्य URL के रूप में पार्स नहीं किया जा सका।',
@@ -374,11 +376,17 @@ function parseHeaders(raw) {
     return m ? m[1].toLowerCase() : 'unknown';
   };
 
+  // True when this doesn't look like raw source at all (likely a rendered/copy-pasted
+  // view of the email rather than "Show original" output) — matters a lot for how
+  // confidently the AI should score, since "no evidence found" must never be treated
+  // the same as "evidence found and it failed".
+  const noHeadersDetected = !from && !authResults && relayHops.length === 0;
+
   return {
     from, returnPath, replyTo, messageId, subject,
     spf: authStatus('spf'), dkim: authStatus('dkim'), dmarc: authStatus('dmarc'),
-    hasDkimSignature: !!dkimSig, relayHops, originIp,
-    bodyText: headerBlockEnd !== -1 ? raw.slice(headerBlockEnd).trim() : ''
+    hasDkimSignature: !!dkimSig, relayHops, originIp, noHeadersDetected,
+    bodyText: headerBlockEnd !== -1 ? raw.slice(headerBlockEnd).trim() : raw.trim()
   };
 }
 
@@ -528,18 +536,27 @@ async function classifyEmailWithLLM(parsed, geo) {
   const returnPathDomain = extractDomain(parsed.returnPath);
   const replyToDomain = extractDomain(parsed.replyTo);
 
-  const prompt = `You are an email forensic security analyst. Analyze this email for phishing, spoofing, impersonation, or business-email-compromise (BEC) indicators. Be specific and reference the actual header/body evidence given.
+  const evidenceWarning = parsed.noHeadersDetected ? `
+IMPORTANT — INPUT QUALITY WARNING:
+No parseable email headers were found in this input at all (no From/Authentication-Results/Received lines). This almost always means the person pasted the visible message view (e.g. copied text from their inbox) rather than the true raw source (e.g. Gmail "Show original"). This means technical evidence is UNAVAILABLE, not that it was checked and failed.
+- Do NOT treat "unknown"/missing SPF, DKIM, DMARC, or origin data as suspicious signals by themselves. Missing evidence is neutral, not negative.
+- Judge this using body content only, and hold it to a HIGHER bar before calling it phishing: generic legitimate patterns like a deadline, a call to action, a request to fill a form, or mass/bulk distribution are NOT by themselves red flags — plenty of real institutional, academic, and workplace email looks exactly like this.
+- Only score this as "Likely Phishing" or "Confirmed Phishing/BEC" if there are concrete, specific fraud indicators in the wording itself: requests for passwords/OTP/payment/bank details, a link that is clearly a credential-harvesting or brand-impersonation URL, or explicit impersonation language. A link to a well-known, legitimate service (e.g. a Google Form, official portal) used for a plausible administrative purpose is not on its own a red flag.
+- If you cannot find concrete fraud-specific evidence, prefer "Legitimate" or a low-scored "Suspicious" over a high score, and say plainly in your summary that raw headers were unavailable so full authentication could not be verified.
+` : '';
 
+  const prompt = `You are an email forensic security analyst. Analyze this email for phishing, spoofing, impersonation, or business-email-compromise (BEC) indicators. Be specific and reference the actual header/body evidence given. Distinguish carefully between evidence that is genuinely absent versus evidence that was checked and failed — only failed/mismatched checks count as red flags.
+${evidenceWarning}
 PARSED HEADER DATA:
-- From: ${parsed.from}
-- Return-Path: ${parsed.returnPath}
-- Reply-To: ${parsed.replyTo}
+- From: ${parsed.from || 'not found in input'}
+- Return-Path: ${parsed.returnPath || 'not found in input'}
+- Reply-To: ${parsed.replyTo || 'not found in input'}
 - Subject: ${parsed.subject}
-- SPF: ${parsed.spf}
-- DKIM: ${parsed.dkim}
-- DMARC: ${parsed.dmarc}
-- From-domain vs Return-Path-domain mismatch: ${fromDomain !== returnPathDomain}
-- From-domain vs Reply-To-domain mismatch: ${fromDomain !== replyToDomain}
+- SPF: ${parsed.spf} ${parsed.spf === 'unknown' ? '(not checked — no data, this is NOT a failure)' : ''}
+- DKIM: ${parsed.dkim} ${parsed.dkim === 'unknown' ? '(not checked — no data, this is NOT a failure)' : ''}
+- DMARC: ${parsed.dmarc} ${parsed.dmarc === 'unknown' ? '(not checked — no data, this is NOT a failure)' : ''}
+- From-domain vs Return-Path-domain mismatch: ${(parsed.from && parsed.returnPath) ? (fromDomain !== returnPathDomain) : 'not applicable — one or both addresses unavailable'}
+- From-domain vs Reply-To-domain mismatch: ${(parsed.from && parsed.replyTo) ? (fromDomain !== replyToDomain) : 'not applicable — one or both addresses unavailable'}
 - Origin IP: ${parsed.originIp || 'not found'}
 - Origin Geolocation: ${geo ? `${geo.city || '?'}, ${geo.country || '?'} (${geo.org || 'unknown org'})` : 'unresolved'}
 - Number of relay hops: ${parsed.relayHops.length}
@@ -599,6 +616,14 @@ ${responseSchemaInstructions()}`;
 let mapInstance = null;
 
 function renderHeaderTable(parsed) {
+  const warningEl = el('headerWarning');
+  if (parsed.noHeadersDetected) {
+    warningEl.style.display = 'flex';
+    warningEl.textContent = t().noHeadersWarning;
+  } else {
+    warningEl.style.display = 'none';
+  }
+
   const rows = [
     ['From', escapeHtml(parsed.from || '—')],
     ['Return-Path', escapeHtml(parsed.returnPath || '—')],
