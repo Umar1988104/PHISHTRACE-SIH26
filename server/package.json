@@ -1,0 +1,16 @@
+{
+  "name": "phishtrace-server",
+  "version": "3.0.0",
+  "description": "PhishTrace Version 3 backend — holds the single admin Gemini API key privately and stores user accounts/history in a small JSON database.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

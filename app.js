@@ -4,18 +4,10 @@
 const el = (id) => document.getElementById(id);
 let fullDetailsOpen = false;
 
-/* ---------- API key modal ---------- */
-const apiModal = el('apiModal');
-el('apiKeyBtn').onclick = () => {
-  el('apiKeyInput').value = localStorage.getItem('phishtrace_gemini_key') || '';
-  apiModal.style.display = 'flex';
-};
-el('apiCancel').onclick = () => apiModal.style.display = 'none';
-el('apiSave').onclick = () => {
-  const key = el('apiKeyInput').value.trim();
-  if (key) localStorage.setItem('phishtrace_gemini_key', key);
-  apiModal.style.display = 'none';
-};
+/* ---------- Backend base URL ---------- */
+/* The server serves the frontend itself, so same-origin requests just work.
+   Change this only if you split the frontend and backend onto different hosts. */
+const BACKEND_BASE = '';
 
 /* ---------- Sample email ---------- */
 const SAMPLE_EMAIL = `Delivered-To: victim@examplecorp.in
@@ -100,14 +92,15 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     headerAnalysisTitle: 'Header & Protocol Analysis', geoTitle: 'Origin Geolocation',
     traceTitle: 'Relay / Trace Path', linkAnalysisTitle: 'Link & Domain Analysis',
     reportTitle: 'Forensic Report (AI-Generated)', historyTitle: 'Case History',
-    apiKeyBtn: '⚙ API Key', apiModalTitle: 'Gemini API Key',
-    apiModalDesc: "Get a free key at aistudio.google.com/apikey. Stored only in your browser's localStorage — never sent anywhere except directly to Google's API.",
     cancelBtn: 'Cancel', saveBtn: 'Save',
     footerText: 'PHISHTRACE — SIH 2026 · Analysis assists investigation, does not replace it · Built with HTML/CSS/JS',
     profileBtnLogin: '👤 Login',
-    loginModalTitle: 'Log In',
-    loginModalDesc: 'Optional — just to unlock your case history on this device. No password needed for this build; nothing is sent anywhere.',
-    namePlaceholder: 'Your name', loginBtn: 'Log In',
+    loginModalTitleLogin: 'Log In', loginModalTitleSignup: 'Sign Up',
+    loginModalDescLogin: 'Log in to unlock your case history — it now follows you across devices.',
+    loginModalDescSignup: 'Create an account to unlock your case history — it now follows you across devices.',
+    namePlaceholder: 'Your name', emailPlaceholder: 'Email', passwordPlaceholder: 'Password',
+    loginBtn: 'Log In', signupBtn: 'Sign Up',
+    toggleToSignup: "Don't have an account? Sign up", toggleToLogin: 'Already have an account? Log in',
     historyMenuItem: 'History', logoutBtn: 'Log Out',
     verdictLabels: { Legitimate: 'Legitimate', Suspicious: 'Suspicious', 'Likely Phishing': 'Likely Phishing', 'Confirmed Phishing/BEC': 'Confirmed Phishing/BEC', 'API key required': 'API key required', 'AI classification failed': 'AI classification failed' },
     quickLine: {
@@ -119,13 +112,11 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
       'AI classification failed': 'AI classification failed — see details below.'
     },
     geminiLanguageName: 'English',
-    apiKeyRequiredIntro: 'Add your free Gemini API key (⚙ button, top right — get one at aistudio.google.com/apikey) to run AI classification.',
-    evidenceNoteEmail: 'Header-based checks below are still fully computed.',
     noHeadersWarning: '⚠ No raw email headers were detected in this input — this looks like the visible message text was pasted rather than the true raw source. Authentication and origin checks could not run, so the verdict below relies on message content only. For a fully verified result, use your email client\u2019s "Show original" / "View source" option and paste that instead.',
-    evidenceNoteLink: 'Domain/pattern checks below are still fully computed.',
-    evidenceNoteMessage: 'No headers exist for a plain message, so AI language analysis is required to produce a verdict.',
     malformedUrl: 'The input could not be parsed as a valid URL.',
-    malformedUrlFlag: 'Malformed URL'
+    malformedUrlFlag: 'Malformed URL',
+    serverUnreachable: 'Could not reach the PhishTrace server. Make sure it is running and try again.',
+    fillAllFields: 'Please fill in all fields.'
   },
   hi: {
     brandTag: 'ईमेल खतरा और फोरेंसिक इंटेलिजेंस',
@@ -165,14 +156,15 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     headerAnalysisTitle: 'हेडर और प्रोटोकॉल विश्लेषण', geoTitle: 'मूल भू-स्थान',
     traceTitle: 'रिले / ट्रेस पथ', linkAnalysisTitle: 'लिंक और डोमेन विश्लेषण',
     reportTitle: 'फोरेंसिक रिपोर्ट (AI-जनित)', historyTitle: 'केस इतिहास',
-    apiKeyBtn: '⚙ API कुंजी', apiModalTitle: 'Gemini API कुंजी',
-    apiModalDesc: 'aistudio.google.com/apikey पर एक निःशुल्क कुंजी प्राप्त करें। यह केवल आपके ब्राउज़र के localStorage में सहेजी जाती है — Google के API के अलावा कहीं और नहीं भेजी जाती।',
     cancelBtn: 'रद्द करें', saveBtn: 'सहेजें',
     footerText: 'PHISHTRACE — SIH 2026 · विश्लेषण जांच में सहायता करता है, उसकी जगह नहीं लेता · HTML/CSS/JS से निर्मित',
     profileBtnLogin: '👤 लॉग इन',
-    loginModalTitle: 'लॉग इन करें',
-    loginModalDesc: 'यह वैकल्पिक है — केवल आपका केस इतिहास अनलॉक करने के लिए। कोई पासवर्ड आवश्यक नहीं; यह डेटा केवल आपके ब्राउज़र में सहेजा जाता है।',
-    namePlaceholder: 'आपका नाम', loginBtn: 'लॉग इन करें',
+    loginModalTitleLogin: 'लॉग इन करें', loginModalTitleSignup: 'साइन अप करें',
+    loginModalDescLogin: 'अपना केस इतिहास अनलॉक करने के लिए लॉग इन करें — अब यह सभी डिवाइस पर आपके साथ रहेगा।',
+    loginModalDescSignup: 'अपना केस इतिहास अनलॉक करने के लिए खाता बनाएं — अब यह सभी डिवाइस पर आपके साथ रहेगा।',
+    namePlaceholder: 'आपका नाम', emailPlaceholder: 'ईमेल', passwordPlaceholder: 'पासवर्ड',
+    loginBtn: 'लॉग इन करें', signupBtn: 'साइन अप करें',
+    toggleToSignup: 'खाता नहीं है? साइन अप करें', toggleToLogin: 'पहले से खाता है? लॉग इन करें',
     historyMenuItem: 'इतिहास', logoutBtn: 'लॉग आउट',
     verdictLabels: { Legitimate: 'वैध', Suspicious: 'संदिग्ध', 'Likely Phishing': 'संभावित फ़िशिंग', 'Confirmed Phishing/BEC': 'पुष्टि की गई फ़िशिंग/BEC', 'API key required': 'API कुंजी आवश्यक है', 'AI classification failed': 'AI वर्गीकरण विफल' },
     quickLine: {
@@ -184,13 +176,11 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
       'AI classification failed': 'AI वर्गीकरण विफल रहा — नीचे विवरण देखें।'
     },
     geminiLanguageName: 'Hindi (Devanagari script)',
-    apiKeyRequiredIntro: 'AI वर्गीकरण चलाने के लिए अपनी निःशुल्क Gemini API कुंजी जोड़ें (ऊपर दाईं ओर ⚙ बटन — aistudio.google.com/apikey से प्राप्त करें)।',
-    evidenceNoteEmail: 'नीचे दिए गए हेडर-आधारित चेक फिर भी पूरी तरह से किए गए हैं।',
     noHeadersWarning: '⚠ इस इनपुट में कोई रॉ ईमेल हेडर नहीं मिला — ऐसा लगता है कि दिखने वाला संदेश टेक्स्ट पेस्ट किया गया है, असली रॉ स्रोत नहीं। प्रमाणीकरण और मूल स्रोत की जांच नहीं हो सकी, इसलिए नीचे दिया गया निर्णय केवल संदेश की सामग्री पर आधारित है। पूरी तरह सत्यापित परिणाम के लिए, अपने ईमेल क्लाइंट के "मूल दिखाएं" / "स्रोत देखें" विकल्प का उपयोग करें।',
-    evidenceNoteLink: 'नीचे दिए गए डोमेन/पैटर्न चेक फिर भी पूरी तरह से किए गए हैं।',
-    evidenceNoteMessage: 'सादे संदेश के लिए कोई हेडर मौजूद नहीं है, इसलिए निर्णय देने के लिए AI भाषा विश्लेषण आवश्यक है।',
     malformedUrl: 'इनपुट को मान्य URL के रूप में पार्स नहीं किया जा सका।',
-    malformedUrlFlag: 'अमान्य URL'
+    malformedUrlFlag: 'अमान्य URL',
+    serverUnreachable: 'PhishTrace सर्वर तक नहीं पहुंचा जा सका। सुनिश्चित करें कि यह चल रहा है और फिर से प्रयास करें।',
+    fillAllFields: 'कृपया सभी फ़ील्ड भरें।'
   }
 };
 
@@ -211,20 +201,15 @@ function applyStaticTranslations() {
   el('linkAnalysisTitle').textContent = s.linkAnalysisTitle;
   el('reportTitle').textContent = s.reportTitle;
   el('historyTitle').textContent = s.historyTitle;
-  el('apiKeyBtn').textContent = s.apiKeyBtn;
-  el('apiModalTitle').textContent = s.apiModalTitle;
-  el('apiModalDesc').textContent = s.apiModalDesc;
-  el('apiCancel').textContent = s.cancelBtn;
-  el('apiSave').textContent = s.saveBtn;
   el('footerText').textContent = s.footerText;
-  el('loginModalTitle').textContent = s.loginModalTitle;
-  el('loginModalDesc').textContent = s.loginModalDesc;
+  el('loginEmailInput').placeholder = s.emailPlaceholder;
+  el('loginPasswordInput').placeholder = s.passwordPlaceholder;
   el('loginNameInput').placeholder = s.namePlaceholder;
   el('loginCancel').textContent = s.cancelBtn;
-  el('loginSave').textContent = s.loginBtn;
   el('menuHistory').textContent = s.historyMenuItem;
   el('menuLogout').textContent = s.logoutBtn;
   el('seeDetailsBtn').textContent = fullDetailsOpen ? s.hideDetails : s.seeFullDetails;
+  applyAuthModeText();
   updateProfileButton();
 }
 
@@ -264,52 +249,132 @@ document.querySelectorAll('.mode-tab').forEach(btn => {
 const SAMPLES = { email: SAMPLE_EMAIL, link: SAMPLE_LINK, message: SAMPLE_MESSAGE };
 el('loadSample').onclick = () => { el('emailInput').value = SAMPLES[currentMode]; };
 
-/* ---------- Optional login (client-side only — real accounts arrive with the Version 3 backend) ---------- */
+/* ---------- Login / Signup (real accounts, backed by the Version 3 server) ---------- */
 const profileMenu = el('profileMenu');
+let authMode = 'login'; // 'login' | 'signup'
+
+function getToken() { return localStorage.getItem('phishtrace_token') || null; }
 function getUser() { return localStorage.getItem('phishtrace_user') || null; }
+function setSession(token, name) {
+  localStorage.setItem('phishtrace_token', token);
+  localStorage.setItem('phishtrace_user', name);
+}
+function clearSession() {
+  localStorage.removeItem('phishtrace_token');
+  localStorage.removeItem('phishtrace_user');
+}
 function updateProfileButton() {
   const user = getUser();
   el('profileBtn').textContent = user ? `👤 ${user}` : t().profileBtnLogin;
 }
+
+function applyAuthModeText() {
+  const s = t();
+  el('loginModalTitle').textContent = authMode === 'login' ? s.loginModalTitleLogin : s.loginModalTitleSignup;
+  el('loginModalDesc').textContent = authMode === 'login' ? s.loginModalDescLogin : s.loginModalDescSignup;
+  el('loginNameInput').style.display = authMode === 'signup' ? 'block' : 'none';
+  el('loginSave').textContent = authMode === 'login' ? s.loginBtn : s.signupBtn;
+  el('authModeToggle').textContent = authMode === 'login' ? s.toggleToSignup : s.toggleToLogin;
+}
+
+el('authModeToggle').onclick = () => {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  el('loginError').style.display = 'none';
+  applyAuthModeText();
+};
+
 el('profileBtn').onclick = (e) => {
   e.stopPropagation();
   if (getUser()) {
     profileMenu.classList.toggle('open');
   } else {
+    authMode = 'login';
     el('loginNameInput').value = '';
+    el('loginEmailInput').value = '';
+    el('loginPasswordInput').value = '';
+    el('loginError').style.display = 'none';
+    applyAuthModeText();
     el('loginModal').style.display = 'flex';
   }
 };
 document.addEventListener('click', () => profileMenu.classList.remove('open'));
 el('loginCancel').onclick = () => el('loginModal').style.display = 'none';
-el('loginSave').onclick = () => {
+
+el('loginSave').onclick = async () => {
   const name = el('loginNameInput').value.trim();
-  if (name) localStorage.setItem('phishtrace_user', name);
-  el('loginModal').style.display = 'none';
-  updateProfileButton();
-  renderHistory();
+  const email = el('loginEmailInput').value.trim();
+  const password = el('loginPasswordInput').value;
+  const errEl = el('loginError');
+  errEl.style.display = 'none';
+
+  if (!email || !password || (authMode === 'signup' && !name)) {
+    errEl.textContent = t().fillAllFields;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  el('loginSave').disabled = true;
+  try {
+    const endpoint = authMode === 'login' ? '/api/login' : '/api/signup';
+    const body = authMode === 'login' ? { email, password } : { name, email, password };
+    const res = await fetch(BACKEND_BASE + endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+
+    setSession(data.token, data.name);
+    el('loginModal').style.display = 'none';
+    updateProfileButton();
+    renderHistory();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+  } finally {
+    el('loginSave').disabled = false;
+  }
 };
+
 el('menuHistory').onclick = () => {
   profileMenu.classList.remove('open');
   el('historyPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 el('menuLogout').onclick = () => {
-  localStorage.removeItem('phishtrace_user');
+  clearSession();
   profileMenu.classList.remove('open');
   updateProfileButton();
   renderHistory();
 };
 
-/* ---------- History (localStorage) — history view is gated behind optional login ---------- */
-function getHistory(){ return JSON.parse(localStorage.getItem('phishtrace_history') || '[]'); }
-function saveHistory(entry){
-  const h = getHistory();
-  h.unshift(entry);
-  localStorage.setItem('phishtrace_history', JSON.stringify(h.slice(0, 20)));
+/* ---------- History — stored server-side per account, so it follows the user across devices ---------- */
+async function getHistory(){
+  if (!getToken()) return [];
+  try {
+    const res = await fetch(BACKEND_BASE + '/api/history', { headers: { Authorization: 'Bearer ' + getToken() } });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    console.warn('Could not load history:', e);
+    return [];
+  }
+}
+async function saveHistory(entry){
+  if (!getToken()) return;
+  try {
+    await fetch(BACKEND_BASE + '/api/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + getToken() },
+      body: JSON.stringify(entry)
+    });
+  } catch (e) {
+    console.warn('Could not save history entry:', e);
+  }
   renderHistory();
 }
-function renderHistory(){
-  const h = getHistory();
+async function renderHistory(){
+  const h = await getHistory();
   el('statCount').textContent = h.length;
   el('statFlagged').textContent = h.filter(x => x.score >= 50).length;
   if (!getUser() || !h.length) { el('historyPanel').style.display = 'none'; return; }
@@ -466,148 +531,57 @@ function analyzeLink(rawInput) {
 }
 
 /* =========================================================
-   3. LLM CLASSIFICATION — Gemini API (shared caller)
+   3. FRAUD CLASSIFICATION — via the Version 3 backend
+   =========================================================
+   The Gemini prompts and the admin's API key now live entirely in
+   server/gemini.js. The frontend just sends already-parsed evidence and
+   gets back the same {score, verdict, summary, red_flags, forensic_report}
+   shape it always has.
    ========================================================= */
-function noApiKeyResult(noteKey) {
-  const s = t();
-  return {
-    score: null,
-    verdict: 'API key required',
-    summary: `${s.apiKeyRequiredIntro} ${s[noteKey]}`,
-    red_flags: [],
-    forensic_report: ''
-  };
-}
-
-function responseSchemaInstructions() {
-  const langName = t().geminiLanguageName;
-  return `Respond with ONLY valid JSON, no markdown fences, no preamble, matching this exact schema:
-{
-  "score": <integer 0-100, fraud/risk confidence, 0=clearly legitimate, 100=near-certain fraud>,
-  "verdict": "<one of exactly these English strings: Legitimate, Suspicious, Likely Phishing, Confirmed Phishing/BEC>",
-  "summary": "<2-3 sentence explanation of the verdict for a non-technical admin, written in ${langName}>",
-  "red_flags": ["<short red flag, written in ${langName}>", ...up to 6],
-  "forensic_report": "<a structured 150-250 word forensic report covering the relevant findings and a recommended action, written in ${langName}. Write it like a short investigator's note.>"
-}
-IMPORTANT: the "verdict" field must stay exactly one of the four English strings given above regardless of the response language — only "summary", "red_flags", and "forensic_report" should be written in ${langName}.`;
-}
-
-async function callGeminiJSON(prompt) {
-  const apiKey = localStorage.getItem('phishtrace_gemini_key');
-  const callGemini = () => fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-    {
+async function callBackendAnalyze(mode, payload) {
+  let res;
+  try {
+    res = await fetch(BACKEND_BASE + '/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: 'application/json' }
-      })
-    }
-  );
-
-  // Retry up to 3 times on 503 (model temporarily overloaded) with a short backoff
-  let response;
-  let lastErrText = '';
-  for (let attempt = 0; attempt < 3; attempt++) {
-    response = await callGemini();
-    if (response.ok) break;
-    if (response.status !== 503) break; // don't retry on other errors (bad key, bad request, etc.)
-    lastErrText = await response.text();
-    await sleep(1200 * (attempt + 1));
+      body: JSON.stringify({ mode, lang: currentLang, ...payload })
+    });
+  } catch (e) {
+    throw new Error(t().serverUnreachable);
   }
-
-  if (!response.ok) {
-    const errText = lastErrText || await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errText.slice(0, 200)}`);
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('\n').trim();
-  if (!text) throw new Error('Empty response from Gemini API');
-  const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || t().serverUnreachable);
+  return data;
 }
 
 async function classifyEmailWithLLM(parsed, geo) {
-  if (!localStorage.getItem('phishtrace_gemini_key')) return noApiKeyResult('evidenceNoteEmail');
-
-  const fromDomain = extractDomain(parsed.from);
-  const returnPathDomain = extractDomain(parsed.returnPath);
-  const replyToDomain = extractDomain(parsed.replyTo);
-
-  const evidenceWarning = parsed.noHeadersDetected ? `
-IMPORTANT — INPUT QUALITY WARNING:
-No parseable email headers were found in this input at all (no From/Authentication-Results/Received lines). This almost always means the person pasted the visible message view (e.g. copied text from their inbox) rather than the true raw source (e.g. Gmail "Show original"). This means technical evidence is UNAVAILABLE, not that it was checked and failed.
-- Do NOT treat "unknown"/missing SPF, DKIM, DMARC, or origin data as suspicious signals by themselves. Missing evidence is neutral, not negative.
-- Judge this using body content only, and hold it to a HIGHER bar before calling it phishing: generic legitimate patterns like a deadline, a call to action, a request to fill a form, or mass/bulk distribution are NOT by themselves red flags — plenty of real institutional, academic, and workplace email looks exactly like this.
-- Only score this as "Likely Phishing" or "Confirmed Phishing/BEC" if there are concrete, specific fraud indicators in the wording itself: requests for passwords/OTP/payment/bank details, a link that is clearly a credential-harvesting or brand-impersonation URL, or explicit impersonation language. A link to a well-known, legitimate service (e.g. a Google Form, official portal) used for a plausible administrative purpose is not on its own a red flag.
-- If you cannot find concrete fraud-specific evidence, prefer "Legitimate" or a low-scored "Suspicious" over a high score, and say plainly in your summary that raw headers were unavailable so full authentication could not be verified.
-` : '';
-
-  const prompt = `You are an email forensic security analyst. Analyze this email for phishing, spoofing, impersonation, or business-email-compromise (BEC) indicators. Be specific and reference the actual header/body evidence given. Distinguish carefully between evidence that is genuinely absent versus evidence that was checked and failed — only failed/mismatched checks count as red flags.
-${evidenceWarning}
-PARSED HEADER DATA:
-- From: ${parsed.from || 'not found in input'}
-- Return-Path: ${parsed.returnPath || 'not found in input'}
-- Reply-To: ${parsed.replyTo || 'not found in input'}
-- Subject: ${parsed.subject}
-- SPF: ${parsed.spf} ${parsed.spf === 'unknown' ? '(not checked — no data, this is NOT a failure)' : ''}
-- DKIM: ${parsed.dkim} ${parsed.dkim === 'unknown' ? '(not checked — no data, this is NOT a failure)' : ''}
-- DMARC: ${parsed.dmarc} ${parsed.dmarc === 'unknown' ? '(not checked — no data, this is NOT a failure)' : ''}
-- From-domain vs Return-Path-domain mismatch: ${(parsed.from && parsed.returnPath) ? (fromDomain !== returnPathDomain) : 'not applicable — one or both addresses unavailable'}
-- From-domain vs Reply-To-domain mismatch: ${(parsed.from && parsed.replyTo) ? (fromDomain !== replyToDomain) : 'not applicable — one or both addresses unavailable'}
-- Origin IP: ${parsed.originIp || 'not found'}
-- Origin Geolocation: ${geo ? `${geo.city || '?'}, ${geo.country || '?'} (${geo.org || 'unknown org'})` : 'unresolved'}
-- Number of relay hops: ${parsed.relayHops.length}
-
-EMAIL BODY:
-${parsed.bodyText.slice(0, 3000)}
-
-${responseSchemaInstructions()}`;
-
-  return callGeminiJSON(prompt);
+  return callBackendAnalyze('email', {
+    parsed: {
+      from: parsed.from, returnPath: parsed.returnPath, replyTo: parsed.replyTo, subject: parsed.subject,
+      spf: parsed.spf, dkim: parsed.dkim, dmarc: parsed.dmarc, originIp: parsed.originIp,
+      relayHopsCount: parsed.relayHops.length, noHeadersDetected: parsed.noHeadersDetected
+    },
+    geo: geo ? { city: geo.city, country: geo.country, org: geo.org } : null,
+    bodyText: parsed.bodyText.slice(0, 3000)
+  });
 }
 
 async function classifyLinkWithLLM(link) {
-  if (!localStorage.getItem('phishtrace_gemini_key')) return noApiKeyResult('evidenceNoteLink');
-
   if (!link.valid) {
     return { score: 100, verdict: 'Suspicious', summary: t().malformedUrl, red_flags: [t().malformedUrlFlag], forensic_report: '' };
   }
-
-  const prompt = `You are a URL/domain forensic security analyst. Analyze this link for phishing, spoofing, or scam indicators. There are no email headers available for a bare link — base your assessment only on the domain, path, and structural signals given. Be specific and reference the actual evidence.
-
-LINK EVIDENCE:
-- Full URL: ${link.fullUrl}
-- Hostname: ${link.host}
-- Registrable domain: ${link.registrableDomain}
-- Uses HTTPS: ${!link.noHttps}
-- Hostname is a raw IP address: ${link.isIp}
-- Hostname uses punycode (possible homograph attack): ${link.isPunycode}
-- Known URL shortener: ${link.isShortener}
-- Number of subdomain labels: ${link.subdomainCount}
-- Hyphen count in hostname: ${link.hyphenCount}
-- Suspicious keywords found in host/path (verify, login, secure, kyc, otp, etc.): ${link.suspiciousKeywords.join(', ') || 'none'}
-- Well-known brand name appearing in hostname but NOT as the actual registrable domain (possible impersonation): ${link.brandInHostButNotRegistrable.join(', ') || 'none'}
-- Path/query: ${link.pathAndQuery}
-
-${responseSchemaInstructions()}`;
-
-  return callGeminiJSON(prompt);
+  return callBackendAnalyze('link', {
+    link: {
+      fullUrl: link.fullUrl, host: link.host, registrableDomain: link.registrableDomain, noHttps: link.noHttps,
+      isIp: link.isIp, isPunycode: link.isPunycode, isShortener: link.isShortener, subdomainCount: link.subdomainCount,
+      hyphenCount: link.hyphenCount, suspiciousKeywords: link.suspiciousKeywords,
+      brandInHostButNotRegistrable: link.brandInHostButNotRegistrable, pathAndQuery: link.pathAndQuery
+    }
+  });
 }
 
 async function classifyMessageWithLLM(text) {
-  if (!localStorage.getItem('phishtrace_gemini_key')) return noApiKeyResult('evidenceNoteMessage');
-
-  const prompt = `You are a fraud-messaging analyst reviewing a plain SMS/WhatsApp-style text message for scam indicators. There are no headers or sender metadata for a plain message — base your assessment purely on language patterns: urgency/threat cues, fake prize or refund language, KYC/OTP/UPI-block scare tactics, requests for money or credentials, suspicious links, impersonation of a bank/government/company, and generic mass-message phrasing. Be specific and reference the actual wording.
-
-MESSAGE TEXT:
-${text.slice(0, 3000)}
-
-${responseSchemaInstructions()}`;
-
-  return callGeminiJSON(prompt);
+  return callBackendAnalyze('message', { text: text.slice(0, 3000) });
 }
 
 /* =========================================================
@@ -776,7 +750,7 @@ async function runEmailAnalysis(raw) {
     llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
   }
   renderVerdict(llmResult);
-  saveHistory({ mode: 'email', subject: parsed.subject, score: llmResult.score ?? 0, ts: Date.now() });
+  await saveHistory({ mode: 'email', subject: parsed.subject, score: llmResult.score ?? 0, ts: Date.now() });
 }
 
 async function runLinkAnalysis(raw) {
@@ -796,7 +770,7 @@ async function runLinkAnalysis(raw) {
     llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
   }
   renderVerdict(llmResult);
-  saveHistory({ mode: 'link', subject: link.valid ? link.host : raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
+  await saveHistory({ mode: 'link', subject: link.valid ? link.host : raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
 }
 
 async function runMessageAnalysis(raw) {
@@ -814,7 +788,7 @@ async function runMessageAnalysis(raw) {
     llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
   }
   renderVerdict(llmResult);
-  saveHistory({ mode: 'message', subject: raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
+  await saveHistory({ mode: 'message', subject: raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
 }
 
 el('analyzeBtn').onclick = async () => {

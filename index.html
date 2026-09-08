@@ -31,7 +31,6 @@
         <button id="menuLogout">Log Out</button>
       </div>
     </div>
-    <button id="apiKeyBtn">⚙ API Key</button>
   </div>
 </header>
 
@@ -131,23 +130,15 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
 
 <footer id="footerText">PHISHTRACE — SIH 2026 · Analysis assists investigation, does not replace it · Built with HTML/CSS/JS</footer>
 
-<div class="modal-overlay" id="apiModal">
-  <div class="modal">
-    <h3 id="apiModalTitle">Gemini API Key</h3>
-    <p id="apiModalDesc">Get a free key at aistudio.google.com/apikey. Stored only in your browser's localStorage — never sent anywhere except directly to Google's API.</p>
-    <input type="password" id="apiKeyInput" placeholder="AIza..." />
-    <div class="modal-actions">
-      <button class="btn-ghost" id="apiCancel">Cancel</button>
-      <button class="btn-save" id="apiSave">Save</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="loginModal">
   <div class="modal">
     <h3 id="loginModalTitle">Log In</h3>
-    <p id="loginModalDesc">Optional — just to unlock your case history on this device. No password needed for this build; nothing is sent anywhere.</p>
-    <input type="text" id="loginNameInput" placeholder="Your name" />
+    <p id="loginModalDesc">Log in to unlock your case history — it now follows you across devices.</p>
+    <input type="text" id="loginNameInput" placeholder="Your name" style="display:none;" />
+    <input type="email" id="loginEmailInput" placeholder="Email" />
+    <input type="password" id="loginPasswordInput" placeholder="Password" style="margin-top:10px;" />
+    <p class="modal-error" id="loginError" style="display:none;"></p>
+    <button class="link-toggle" id="authModeToggle">Don't have an account? Sign up</button>
     <div class="modal-actions">
       <button class="btn-ghost" id="loginCancel">Cancel</button>
       <button class="btn-save" id="loginSave">Log In</button>

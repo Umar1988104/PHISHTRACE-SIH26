@@ -29,13 +29,6 @@ header{
 .brand-name{font-weight:800;font-size:18px;letter-spacing:0.5px;}
 .brand-tag{font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
 .header-right{display:flex;align-items:center;gap:14px;}
-#apiKeyBtn{
-  font-family:var(--font-mono);font-size:12px;color:var(--muted);
-  background:transparent;border:1px solid var(--line);padding:8px 14px;
-  border-radius:6px;cursor:pointer;transition:all .15s;
-}
-#apiKeyBtn:hover{border-color:var(--trace);color:var(--trace);}
-
 .lang-select{
   font-family:var(--font-mono);font-size:12px;color:var(--muted);
   background:var(--panel-2);border:1px solid var(--line);padding:7px 10px;
@@ -198,3 +191,8 @@ footer{text-align:center;color:var(--muted);font-family:var(--font-mono);font-si
 .modal-actions button{padding:9px 16px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:600;}
 .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--muted);}
 .btn-save{background:var(--trace);border:none;color:#04201d;}
+.modal-error{color:var(--alert);font-size:12px;margin:10px 0 0;}
+.link-toggle{
+  display:block;background:none;border:none;color:var(--trace);font-size:12px;
+  text-decoration:underline;cursor:pointer;padding:10px 0 0;font-family:var(--font-ui);
+}
