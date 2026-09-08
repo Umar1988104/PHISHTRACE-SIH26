@@ -41,3 +41,11 @@ Not yet included (future scope): WHOIS/DNS deep lookups, threat-intel/blacklist 
 
 ## Team
 Team PhishTrace
+
+## Team Members
+Jayanti Mishra
+Aastha Baurai
+Trilotma
+Aahladita
+Rishab Singh
+Mohammad Umar Sikandri
