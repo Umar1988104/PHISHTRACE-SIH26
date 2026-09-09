@@ -118,16 +118,26 @@ async function callGemini(prompt) {
 
   let response;
   let lastErrText = '';
+  let lastStatus = 0;
   for (let attempt = 0; attempt < 3; attempt++) {
     response = await doCall();
     if (response.ok) break;
-    if (response.status !== 503) break;
+    lastStatus = response.status;
+    // 503 = model overloaded (transient), 429 = rate/quota limit (also often transient if it's
+    // the per-minute RPM cap rather than the daily RPD cap) — both are worth a short backoff.
+    if (response.status !== 503 && response.status !== 429) break;
     lastErrText = await response.text();
-    await new Promise(r => setTimeout(r, 1200 * (attempt + 1)));
+    const wait = response.status === 429 ? 4000 * (attempt + 1) : 1200 * (attempt + 1);
+    await new Promise(r => setTimeout(r, wait));
   }
 
   if (!response.ok) {
     const errText = lastErrText || await response.text();
+    if (lastStatus === 429) {
+      const err = new Error('Our AI analysis service is getting more traffic than its current plan allows. Please wait a minute and try again — if this keeps happening, the daily limit may be exhausted until it resets.');
+      err.code = 'RATE_LIMITED';
+      throw err;
+    }
     throw new Error(`Gemini API error (${response.status}): ${errText.slice(0, 200)}`);
   }
 
