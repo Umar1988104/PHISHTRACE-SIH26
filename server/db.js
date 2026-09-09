@@ -40,7 +40,7 @@ const historySchema = new mongoose.Schema({
 });
 
 const flaggedCaseSchema = new mongoose.Schema({
-  mode: String,               // 'email' | 'link' | 'message'
+  mode: String,                // 'email' | 'link' | 'message'
   subject: String,            // short label shown in the reviewer list
   score: Number,
   verdict: String,
@@ -53,6 +53,28 @@ const flaggedCaseSchema = new mongoose.Schema({
 const User = mongoose.model('User', userSchema);
 const History = mongoose.model('History', historySchema);
 const FlaggedCase = mongoose.model('FlaggedCase', flaggedCaseSchema);
+
+/* ---------- Total visit counter (all-time, persisted — distinct from the
+   in-memory "online now" count in visitors.js, which resets on restart) ---------- */
+const siteStatSchema = new mongoose.Schema({
+  key: { type: String, unique: true }, // just one document, key: 'totalVisits'
+  count: { type: Number, default: 0 }
+});
+const SiteStat = mongoose.model('SiteStat', siteStatSchema);
+
+async function incrementTotalVisits() {
+  const doc = await SiteStat.findOneAndUpdate(
+    { key: 'totalVisits' },
+    { $inc: { count: 1 } },
+    { upsert: true, new: true }
+  );
+  return doc.count;
+}
+
+async function getTotalVisits() {
+  const doc = await SiteStat.findOne({ key: 'totalVisits' });
+  return doc ? doc.count : 0;
+}
 
 /* ---------- Users ---------- */
 async function findUserByEmail(email) {
@@ -95,5 +117,6 @@ async function resolveFlaggedCase(id, reviewerVerdict) {
 
 module.exports = {
   connect, findUserByEmail, findUserById, createUser, getHistoryForUser, addHistoryEntry,
-  createFlaggedCase, getPendingFlaggedCases, resolveFlaggedCase
+  createFlaggedCase, getPendingFlaggedCases, resolveFlaggedCase,
+  incrementTotalVisits, getTotalVisits
 };

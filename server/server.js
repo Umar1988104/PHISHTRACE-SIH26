@@ -162,8 +162,22 @@ app.post('/api/visitors/ping', (req, res) => {
   if (!sessionId) return res.status(400).json({ error: 'Missing sessionId.' });
   res.json({ count: visitors.ping(sessionId) });
 });
-app.get('/api/visitors', (req, res) => {
-  res.json({ count: visitors.getCount() });
+app.get('/api/visitors', async (req, res) => {
+  let totalVisits = null;
+  try { totalVisits = await db.getTotalVisits(); } catch (e) { console.error('Total visits read error:', e.message); }
+  res.json({ count: visitors.getCount(), totalVisits });
+});
+
+// Called once per new tab/session (frontend gates this with sessionStorage so it only
+// fires once per visit) — a persistent, all-time "X people have used PhishTrace" counter.
+app.post('/api/visitors/register-visit', async (req, res) => {
+  try {
+    const totalVisits = await db.incrementTotalVisits();
+    res.json({ totalVisits });
+  } catch (e) {
+    console.error('Register visit error:', e.message);
+    res.status(500).json({ error: 'Could not record visit.' });
+  }
 });
 
 /* ---------- Serve the frontend (index.html / app.js / style.css) from the parent folder ---------- */

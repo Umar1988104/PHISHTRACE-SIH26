@@ -70,6 +70,12 @@ ${responseSchemaInstructions(lang)}`;
 function buildLinkPrompt({ link, lang }) {
   return `You are a URL/domain forensic security analyst. Analyze this link for phishing, spoofing, or scam indicators. There are no email headers available for a bare link — base your assessment only on the domain, path, and structural signals given. Be specific and reference the actual evidence.
 
+IMPORTANT — CALIBRATION: these structural signals are individually weak evidence, not proof, and none of them should alone push a score into "Likely Phishing" or above:
+- A URL shortener (bit.ly, tinyurl, wa.me, etc.) is extremely common for entirely legitimate personal sharing, business links, and WhatsApp contacts — being unable to see through it means the evidence is UNKNOWN, not automatically bad. Only treat a shortener as a real red flag when it is combined with at least one other concrete signal (a suspicious keyword AND a brand-impersonation pattern, for example).
+- A single "suspicious keyword" match (e.g. the word "account" or "confirm" appearing anywhere in an ordinary path) is weak on its own — plenty of legitimate URLs contain these words as part of normal site navigation. Only weight this heavily if MULTIPLE such keywords appear together, or the keyword appears alongside a mismatched/impersonated brand domain.
+- If the only evidence available is "uses a shortener" and/or one mild keyword with no brand impersonation, no raw IP, and no punycode, prefer "Legitimate" or a low-scored "Suspicious" — and say plainly in your summary that the shortened destination could not be verified, rather than treating that gap as guilt.
+- Reserve high scores for concrete, compounding evidence: brand impersonation (a well-known name in the hostname but not the real registrable domain), a raw IP address as the host, punycode/homograph tricks, or multiple suspicious keywords stacked together.
+
 LINK EVIDENCE:
 - Full URL: ${link.fullUrl}
 - Hostname: ${link.host}

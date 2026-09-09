@@ -41,6 +41,7 @@
       <p id="heroSubtitle">Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.</p>
       <div class="stat-strip">
         <div><div class="n" id="statVisitors">–</div><div class="l" id="statVisitorsLabel">Online now</div></div>
+        <div><div class="n" id="statTotalVisits">–</div><div class="l" id="statTotalVisitsLabel">Total visits</div></div>
         <div><div class="n" id="statCount">0</div><div class="l" id="statAnalyzedLabel">Analyzed</div></div>
         <div><div class="n" id="statFlagged">0</div><div class="l" id="statFlaggedLabel">Flagged</div></div>
       </div>
@@ -160,6 +161,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
         <div class="panel">
           <div class="panel-title" id="headerAnalysisTitle">Header &amp; Protocol Analysis</div>
           <div class="header-warning" id="headerWarning" style="display:none;"></div>
+          <div class="auth-row" id="authChecksRow"></div>
           <table id="headerTable"></table>
         </div>
         <div class="panel">

@@ -61,7 +61,8 @@ main{max-width:1180px;margin:0 auto;padding:32px;}
 .intro p{color:var(--muted);margin:0;max-width:520px;font-size:14.5px;line-height:1.6;}
 
 /* Stat widgets — iOS-style cards with animated count-up numbers */
-.stat-strip{display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:12px;}
+.stat-strip{display:grid;grid-template-columns:repeat(4,minmax(100px,1fr));gap:10px;}
+@media(max-width:640px){.stat-strip{grid-template-columns:repeat(2,1fr);}}
 .stat-strip div{
   background:var(--panel);border:1px solid var(--line);border-radius:14px;
   padding:14px 18px;text-align:left;box-shadow:var(--shadow-card);min-width:118px;
@@ -271,3 +272,25 @@ footer{border-top:1px solid var(--line);margin-top:20px;}
 }
 .footer-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--text);}
 .footer-text{color:var(--muted);font-size:12.5px;}
+
+/* Visual auth-check pills (SPF/DKIM/DMARC) — replaces plain text pass/fail */
+.auth-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.auth-pill{
+  display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;
+  font-family:var(--font-mono);font-size:12px;flex:1;min-width:130px;border:1px solid transparent;
+}
+.auth-pill-icon{
+  width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;
+}
+.auth-pill-label{font-weight:700;color:var(--text);flex:1;}
+.auth-pill-status{font-size:10.5px;letter-spacing:0.3px;}
+.auth-pass{background:var(--safe-dim);border-color:#BFEBCB;}
+.auth-pass .auth-pill-icon{background:var(--safe);color:#fff;}
+.auth-pass .auth-pill-status{color:#1E9E4E;}
+.auth-fail{background:var(--alert-dim);border-color:#FFCFC9;}
+.auth-fail .auth-pill-icon{background:var(--alert);color:#fff;}
+.auth-fail .auth-pill-status{color:var(--alert);}
+.auth-unknown{background:var(--panel-2);border-color:var(--line);}
+.auth-unknown .auth-pill-icon{background:#D5DAE1;color:#5B6675;}
+.auth-unknown .auth-pill-status{color:var(--muted);}

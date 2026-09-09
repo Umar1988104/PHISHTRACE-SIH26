@@ -58,7 +58,7 @@ const LANG_STRINGS = {
     brandTag: 'Email Threat & Forensic Intelligence',
     heroTitle: 'Paste an email, a link, or a message. Get the trace.',
     heroSubtitle: 'Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.',
-    statAnalyzed: 'Analyzed', statFlagged: 'Flagged', statOnlineNow: 'Online now',
+    statAnalyzed: 'Analyzed', statFlagged: 'Flagged', statOnlineNow: 'Online now', statTotalVisits: 'Total visits',
     tabs: { email: 'Email', link: 'Link', message: 'Message' },
     modes: {
       email: {
@@ -124,7 +124,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     brandTag: 'ईमेल खतरा और फोरेंसिक इंटेलिजेंस',
     heroTitle: 'एक ईमेल, लिंक या संदेश पेस्ट करें। ट्रेस पाएं।',
     heroSubtitle: 'हेडर, प्रमाणीकरण परिणाम, डोमेन संरचना और भाषा पैटर्न का विश्लेषण करके फ़िशिंग, स्पूफिंग और BEC प्रयासों को चिन्हित करता है — और जहां प्रमाण मौजूद हो वहां संभावित मूल स्रोत का पता लगाता है।',
-    statAnalyzed: 'विश्लेषित', statFlagged: 'चिन्हित', statOnlineNow: 'अभी ऑनलाइन',
+    statAnalyzed: 'विश्लेषित', statFlagged: 'चिन्हित', statOnlineNow: 'अभी ऑनलाइन', statTotalVisits: 'कुल विज़िट',
     tabs: { email: 'ईमेल', link: 'लिंक', message: 'संदेश' },
     modes: {
       email: {
@@ -199,6 +199,7 @@ function applyStaticTranslations() {
   el('statAnalyzedLabel').textContent = s.statAnalyzed;
   el('statFlaggedLabel').textContent = s.statFlagged;
   el('statVisitorsLabel').textContent = s.statOnlineNow;
+  el('statTotalVisitsLabel').textContent = s.statTotalVisits;
   el('scanQrBtn').textContent = s.scanQrLabel;
   document.querySelectorAll('.mode-tab').forEach(btn => { btn.textContent = s.tabs[btn.dataset.mode]; });
   el('headerAnalysisTitle').textContent = s.headerAnalysisTitle;
@@ -654,13 +655,27 @@ function renderHeaderTable(parsed) {
     ['Return-Path', escapeHtml(parsed.returnPath || '—')],
     ['Reply-To', escapeHtml(parsed.replyTo || '—')],
     ['Message-ID', escapeHtml(parsed.messageId || '—')],
-    ['SPF', authCell(parsed.spf)],
-    ['DKIM', authCell(parsed.dkim)],
-    ['DMARC', authCell(parsed.dmarc)],
     ['Relay hops', String(parsed.relayHops.length)],
     ['Origin IP', escapeHtml(parsed.originIp || 'not found')]
   ];
   el('headerTable').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  renderAuthChecks(parsed);
+}
+
+function renderAuthChecks(parsed) {
+  const checks = [['SPF', parsed.spf], ['DKIM', parsed.dkim], ['DMARC', parsed.dmarc]];
+  el('authChecksRow').innerHTML = checks.map(([label, status]) => {
+    const pass = status === 'pass';
+    const fail = status === 'fail' || status === 'softfail';
+    const cls = pass ? 'auth-pass' : fail ? 'auth-fail' : 'auth-unknown';
+    const icon = pass ? '✓' : fail ? '✕' : '?';
+    return `
+      <div class="auth-pill ${cls}">
+        <span class="auth-pill-icon">${icon}</span>
+        <span class="auth-pill-label">${label}</span>
+        <span class="auth-pill-status">${status.toUpperCase()}</span>
+      </div>`;
+  }).join('');
 }
 
 function authCell(status) {
@@ -979,6 +994,12 @@ el('seeDetailsBtn').onclick = () => {
   fullDetailsOpen = !fullDetailsOpen;
   el('fullDetails').style.display = fullDetailsOpen ? 'block' : 'none';
   el('seeDetailsBtn').textContent = fullDetailsOpen ? t().hideDetails : t().seeFullDetails;
+  // Bug fix: Leaflet measures its container's size at creation time. Since the map is built
+  // inside #fullDetails while it's still display:none (hidden until this click), it silently
+  // renders broken — this tells it to recalculate its size now that the container is visible.
+  if (fullDetailsOpen && mapInstance) {
+    setTimeout(() => mapInstance.invalidateSize(), 50);
+  }
 };
 
 /* =========================================================
@@ -1100,11 +1121,30 @@ async function pingVisitors() {
     });
     const data = await res.json();
     animateNumber('statVisitors', data.count);
+    if (data.totalVisits !== null && data.totalVisits !== undefined) {
+      animateNumber('statTotalVisits', data.totalVisits);
+    }
   } catch (e) {
     // Non-critical — just leave the last known count showing.
   }
 }
+
+// Total-visits counter: increments once per browser tab session, not on every 15s ping,
+// so refreshing or leaving the tab open doesn't inflate the all-time count.
+async function registerVisitOnce() {
+  if (sessionStorage.getItem('phishtrace_visit_counted')) return;
+  try {
+    const res = await fetch(BACKEND_BASE + '/api/visitors/register-visit', { method: 'POST' });
+    const data = await res.json();
+    if (data.totalVisits !== undefined) animateNumber('statTotalVisits', data.totalVisits);
+    sessionStorage.setItem('phishtrace_visit_counted', '1');
+  } catch (e) {
+    // Non-critical — it'll just retry next tab/session.
+  }
+}
+
 pingVisitors();
+registerVisitOnce();
 setInterval(pingVisitors, 15000);
 
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
