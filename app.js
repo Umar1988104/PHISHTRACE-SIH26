@@ -7,7 +7,7 @@ let fullDetailsOpen = false;
 /* ---------- Backend base URL ---------- */
 /* The server serves the frontend itself, so same-origin requests just work.
    Change this only if you split the frontend and backend onto different hosts. */
-const BACKEND_BASE = '';
+const BACKEND_BASE = 'https://phishtrace-sih26.onrender.com';
 
 /* ---------- Sample email ---------- */
 const SAMPLE_EMAIL = `Delivered-To: victim@examplecorp.in
