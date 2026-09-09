@@ -7,7 +7,7 @@ let fullDetailsOpen = false;
 /* ---------- Backend base URL ---------- */
 /* The server serves the frontend itself, so same-origin requests just work.
    Change this only if you split the frontend and backend onto different hosts. */
-const BACKEND_BASE = 'https://phishtrace-sih26.onrender.com';
+const BACKEND_BASE = '';
 
 /* ---------- Sample email ---------- */
 const SAMPLE_EMAIL = `Delivered-To: victim@examplecorp.in
@@ -58,7 +58,7 @@ const LANG_STRINGS = {
     brandTag: 'Email Threat & Forensic Intelligence',
     heroTitle: 'Paste an email, a link, or a message. Get the trace.',
     heroSubtitle: 'Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.',
-    statAnalyzed: 'Analyzed', statFlagged: 'Flagged', statOnlineNow: 'Online now', statTotalVisits: 'Total visits',
+    statAnalyzed: 'Analyzed', statFlagged: 'Flagged', statOnlineNow: 'Online now', tickerLabel: '⚠ SCAM WATCH',
     tabs: { email: 'Email', link: 'Link', message: 'Message' },
     modes: {
       email: {
@@ -117,6 +117,10 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     malformedUrlFlag: 'Malformed URL',
     serverUnreachable: 'Could not reach the PhishTrace server. Make sure it is running and try again.',
     fillAllFields: 'Please fill in all fields.',
+    wrongLinkFormat: "That doesn't look like a valid link — please paste a full URL (e.g. https://example.com).",
+    errorFriendlyTitle: 'Taking longer than expected',
+    errorFriendlyText: 'Please wait a moment and try again — the network seems slow right now.',
+    showDetails: 'Show details', hideDetailsError: 'Hide details',
     scanQrLabel: '📷 Scan a QR code instead →',
     qrNotFound: 'Could not find a QR code in that image — try a clearer photo or a different file.'
   },
@@ -124,7 +128,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     brandTag: 'ईमेल खतरा और फोरेंसिक इंटेलिजेंस',
     heroTitle: 'एक ईमेल, लिंक या संदेश पेस्ट करें। ट्रेस पाएं।',
     heroSubtitle: 'हेडर, प्रमाणीकरण परिणाम, डोमेन संरचना और भाषा पैटर्न का विश्लेषण करके फ़िशिंग, स्पूफिंग और BEC प्रयासों को चिन्हित करता है — और जहां प्रमाण मौजूद हो वहां संभावित मूल स्रोत का पता लगाता है।',
-    statAnalyzed: 'विश्लेषित', statFlagged: 'चिन्हित', statOnlineNow: 'अभी ऑनलाइन', statTotalVisits: 'कुल विज़िट',
+    statAnalyzed: 'विश्लेषित', statFlagged: 'चिन्हित', statOnlineNow: 'अभी ऑनलाइन', tickerLabel: '⚠ स्कैम अलर्ट',
     tabs: { email: 'ईमेल', link: 'लिंक', message: 'संदेश' },
     modes: {
       email: {
@@ -183,6 +187,10 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     malformedUrlFlag: 'अमान्य URL',
     serverUnreachable: 'PhishTrace सर्वर तक नहीं पहुंचा जा सका। सुनिश्चित करें कि यह चल रहा है और फिर से प्रयास करें।',
     fillAllFields: 'कृपया सभी फ़ील्ड भरें।',
+    wrongLinkFormat: 'यह मान्य लिंक जैसा नहीं लगता — कृपया पूरा URL पेस्ट करें (जैसे https://example.com)।',
+    errorFriendlyTitle: 'अपेक्षा से अधिक समय लग रहा है',
+    errorFriendlyText: 'कृपया थोड़ी देर रुकें और फिर से प्रयास करें — नेटवर्क धीमा लग रहा है।',
+    showDetails: 'विवरण देखें', hideDetailsError: 'विवरण छिपाएं',
     scanQrLabel: '📷 इसके बजाय QR कोड स्कैन करें →',
     qrNotFound: 'उस इमेज में कोई QR कोड नहीं मिला — कोई साफ़ फोटो या अलग फ़ाइल आज़माएं।'
   }
@@ -199,7 +207,7 @@ function applyStaticTranslations() {
   el('statAnalyzedLabel').textContent = s.statAnalyzed;
   el('statFlaggedLabel').textContent = s.statFlagged;
   el('statVisitorsLabel').textContent = s.statOnlineNow;
-  el('statTotalVisitsLabel').textContent = s.statTotalVisits;
+  el('tickerLabel').textContent = s.tickerLabel;
   el('scanQrBtn').textContent = s.scanQrLabel;
   document.querySelectorAll('.mode-tab').forEach(btn => { btn.textContent = s.tabs[btn.dataset.mode]; });
   el('headerAnalysisTitle').textContent = s.headerAnalysisTitle;
@@ -219,6 +227,37 @@ function applyStaticTranslations() {
   applyAuthModeText();
   updateProfileButton();
 }
+
+/* ---------- Scam news ticker (SAMPLE data only — for demo purposes, not a live feed) ---------- */
+const SAMPLE_SCAM_NEWS = [
+  'Fake UPI "KYC expiry" texts surge across Delhi-NCR — banks say they never ask for OTP via SMS',
+  'Bengaluru police warn of QR-code "quishing" scam at fuel stations and parking lots',
+  'Fraudsters impersonate income tax department in bulk refund-scam emails ahead of filing season',
+  'Job-offer scam targets students with fake "registration fee" WhatsApp links',
+  'Courier-delivery phishing texts spike — "customs duty pending" links found to steal card details',
+  'RBI reiterates: banks never call asking you to install screen-sharing apps',
+  'Fake electricity-bill payment links circulating via SMS in multiple states',
+  'Cybercrime helpline 1930 sees rise in loan-app harassment complaints'
+];
+function renderNewsTicker() {
+  const items = SAMPLE_SCAM_NEWS.map(text => `<div class="ticker-item"><span class="dot"></span>${escapeHtml(text)}</div>`).join('');
+  // Duplicated once so the -50% translateX loop is seamless (no visible jump/reset).
+  el('tickerTrack').innerHTML = items + items;
+}
+renderNewsTicker();
+
+/* ---------- Theme (light/dark) ---------- */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  el('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem('phishtrace_theme', theme);
+}
+let currentTheme = localStorage.getItem('phishtrace_theme') || 'light';
+applyTheme(currentTheme);
+el('themeToggle').onclick = () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  applyTheme(currentTheme);
+};
 
 el('langSelect').value = currentLang;
 el('langSelect').onchange = (e) => {
@@ -655,27 +694,13 @@ function renderHeaderTable(parsed) {
     ['Return-Path', escapeHtml(parsed.returnPath || '—')],
     ['Reply-To', escapeHtml(parsed.replyTo || '—')],
     ['Message-ID', escapeHtml(parsed.messageId || '—')],
+    ['SPF', authCell(parsed.spf)],
+    ['DKIM', authCell(parsed.dkim)],
+    ['DMARC', authCell(parsed.dmarc)],
     ['Relay hops', String(parsed.relayHops.length)],
     ['Origin IP', escapeHtml(parsed.originIp || 'not found')]
   ];
   el('headerTable').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
-  renderAuthChecks(parsed);
-}
-
-function renderAuthChecks(parsed) {
-  const checks = [['SPF', parsed.spf], ['DKIM', parsed.dkim], ['DMARC', parsed.dmarc]];
-  el('authChecksRow').innerHTML = checks.map(([label, status]) => {
-    const pass = status === 'pass';
-    const fail = status === 'fail' || status === 'softfail';
-    const cls = pass ? 'auth-pass' : fail ? 'auth-fail' : 'auth-unknown';
-    const icon = pass ? '✓' : fail ? '✕' : '?';
-    return `
-      <div class="auth-pill ${cls}">
-        <span class="auth-pill-icon">${icon}</span>
-        <span class="auth-pill-label">${label}</span>
-        <span class="auth-pill-status">${status.toUpperCase()}</span>
-      </div>`;
-  }).join('');
 }
 
 function authCell(status) {
@@ -994,12 +1019,6 @@ el('seeDetailsBtn').onclick = () => {
   fullDetailsOpen = !fullDetailsOpen;
   el('fullDetails').style.display = fullDetailsOpen ? 'block' : 'none';
   el('seeDetailsBtn').textContent = fullDetailsOpen ? t().hideDetails : t().seeFullDetails;
-  // Bug fix: Leaflet measures its container's size at creation time. Since the map is built
-  // inside #fullDetails while it's still display:none (hidden until this click), it silently
-  // renders broken — this tells it to recalculate its size now that the container is visible.
-  if (fullDetailsOpen && mapInstance) {
-    setTimeout(() => mapInstance.invalidateSize(), 50);
-  }
 };
 
 /* =========================================================
@@ -1030,13 +1049,7 @@ async function runEmailAnalysis(raw) {
   renderTrace(parsed, geo);
 
   setLoadingStep(3);
-  let llmResult;
-  try {
-    llmResult = await classifyEmailWithLLM(parsed, geo);
-  } catch (e) {
-    console.error(e);
-    llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
-  }
+  const llmResult = await classifyEmailWithLLM(parsed, geo);
   renderVerdict(llmResult);
   setLastCase('email', parsed.subject || '(no subject)', llmResult, { parsed, geo });
   saveHistory({ mode: 'email', subject: parsed.subject, score: llmResult.score ?? 0, ts: Date.now() });
@@ -1049,13 +1062,7 @@ async function runLinkAnalysis(raw) {
   renderLinkTable(link);
 
   setLoadingStep(3);
-  let llmResult;
-  try {
-    llmResult = await classifyLinkWithLLM(link);
-  } catch (e) {
-    console.error(e);
-    llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
-  }
+  const llmResult = await classifyLinkWithLLM(link);
   renderVerdict(llmResult);
   const subject = link.valid ? link.host : raw.slice(0, 60);
   setLastCase('link', subject, llmResult, { link });
@@ -1066,21 +1073,59 @@ async function runMessageAnalysis(raw) {
   setLoadingStep(1);
   setLoadingStep(2);
   setLoadingStep(3);
-  let llmResult;
-  try {
-    llmResult = await classifyMessageWithLLM(raw);
-  } catch (e) {
-    console.error(e);
-    llmResult = { score: null, verdict: 'AI classification failed', summary: e.message, red_flags: [], forensic_report: '' };
-  }
+  const llmResult = await classifyMessageWithLLM(raw);
   renderVerdict(llmResult);
   setLastCase('message', raw.slice(0, 60), llmResult, { text: raw });
   saveHistory({ mode: 'message', subject: raw.slice(0, 60), score: llmResult.score ?? 0, ts: Date.now() });
 }
 
+function clearInputError() {
+  el('inputError').style.display = 'none';
+  el('emailInput').classList.remove('input-invalid');
+}
+function showInputError(message) {
+  el('inputError').textContent = '⚠ ' + message;
+  el('inputError').style.display = 'flex';
+  el('emailInput').classList.add('input-invalid');
+  el('emailInput').focus();
+}
+function hideErrorBox() {
+  el('errorBox').style.display = 'none';
+  el('errorDetailsText').style.display = 'none';
+  el('errorDetailsToggle').textContent = t().showDetails;
+}
+function showErrorBox(technicalMessage) {
+  el('errorFriendlyTitle').textContent = t().errorFriendlyTitle;
+  el('errorFriendlyText').textContent = t().errorFriendlyText;
+  el('errorDetailsText').textContent = technicalMessage;
+  el('errorDetailsText').style.display = 'none';
+  el('errorDetailsToggle').textContent = t().showDetails;
+  el('errorBox').style.display = 'block';
+}
+el('errorDetailsToggle').onclick = () => {
+  const isHidden = el('errorDetailsText').style.display === 'none';
+  el('errorDetailsText').style.display = isHidden ? 'block' : 'none';
+  el('errorDetailsToggle').textContent = isHidden ? t().hideDetailsError : t().showDetails;
+};
+el('errorRetryBtn').onclick = () => {
+  hideErrorBox();
+  el('analyzeBtn').click();
+};
+
+el('emailInput').addEventListener('input', clearInputError);
+document.querySelectorAll('.mode-tab').forEach(btn => btn.addEventListener('click', clearInputError));
+
 el('analyzeBtn').onclick = async () => {
   const raw = el('emailInput').value.trim();
-  if (!raw) { alert(t().modes[currentMode].alertEmpty); return; }
+  clearInputError();
+  hideErrorBox();
+
+  if (!raw) { showInputError(t().modes[currentMode].alertEmpty); return; }
+
+  if (currentMode === 'link') {
+    const precheck = analyzeLink(raw);
+    if (!precheck.valid) { showInputError(t().wrongLinkFormat); return; }
+  }
 
   el('analyzeBtn').disabled = true;
   el('results').style.display = 'none';
@@ -1097,7 +1142,7 @@ el('analyzeBtn').onclick = async () => {
   } catch (err) {
     console.error(err);
     el('loadingBox').style.display = 'none';
-    alert('Something went wrong during analysis: ' + err.message);
+    showErrorBox(err.message || String(err));
   } finally {
     el('analyzeBtn').disabled = false;
   }
@@ -1121,30 +1166,11 @@ async function pingVisitors() {
     });
     const data = await res.json();
     animateNumber('statVisitors', data.count);
-    if (data.totalVisits !== null && data.totalVisits !== undefined) {
-      animateNumber('statTotalVisits', data.totalVisits);
-    }
   } catch (e) {
     // Non-critical — just leave the last known count showing.
   }
 }
-
-// Total-visits counter: increments once per browser tab session, not on every 15s ping,
-// so refreshing or leaving the tab open doesn't inflate the all-time count.
-async function registerVisitOnce() {
-  if (sessionStorage.getItem('phishtrace_visit_counted')) return;
-  try {
-    const res = await fetch(BACKEND_BASE + '/api/visitors/register-visit', { method: 'POST' });
-    const data = await res.json();
-    if (data.totalVisits !== undefined) animateNumber('statTotalVisits', data.totalVisits);
-    sessionStorage.setItem('phishtrace_visit_counted', '1');
-  } catch (e) {
-    // Non-critical — it'll just retry next tab/session.
-  }
-}
-
 pingVisitors();
-registerVisitOnce();
 setInterval(pingVisitors, 15000);
 
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }

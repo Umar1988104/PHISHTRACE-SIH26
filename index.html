@@ -20,6 +20,7 @@
     </div>
   </div>
   <div class="header-right">
+    <button id="themeToggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
     <select id="langSelect" class="lang-select" aria-label="Language">
       <option value="en">EN</option>
       <option value="hi">हिं</option>
@@ -34,6 +35,11 @@
   </div>
 </header>
 
+<div class="news-ticker" id="newsTicker" aria-label="Recent scam news (sample data)">
+  <div class="ticker-label" id="tickerLabel">⚠ SCAM WATCH</div>
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
 <main>
   <section class="hero">
     <div class="hero-copy">
@@ -41,23 +47,22 @@
       <p id="heroSubtitle">Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.</p>
       <div class="stat-strip">
         <div><div class="n" id="statVisitors">–</div><div class="l" id="statVisitorsLabel">Online now</div></div>
-        <div><div class="n" id="statTotalVisits">–</div><div class="l" id="statTotalVisitsLabel">Total visits</div></div>
         <div><div class="n" id="statCount">0</div><div class="l" id="statAnalyzedLabel">Analyzed</div></div>
         <div><div class="n" id="statFlagged">0</div><div class="l" id="statFlaggedLabel">Flagged</div></div>
       </div>
     </div>
     <div class="hero-visual" aria-hidden="true">
       <svg viewBox="0 0 320 320" width="100%" height="100%">
-        <circle cx="160" cy="160" r="140" fill="none" stroke="#DCEEF0" stroke-width="1.5"/>
-        <circle cx="160" cy="160" r="104" fill="none" stroke="#DCEEF0" stroke-width="1.5"/>
-        <circle cx="160" cy="160" r="68" fill="none" stroke="#CFE9EB" stroke-width="1.5"/>
+        <circle class="hero-ring" cx="160" cy="160" r="140" fill="none" stroke-width="1.5"/>
+        <circle class="hero-ring" cx="160" cy="160" r="104" fill="none" stroke-width="1.5"/>
+        <circle class="hero-ring-2" cx="160" cy="160" r="68" fill="none" stroke-width="1.5"/>
         <circle cx="160" cy="160" r="140" fill="none" stroke="#2CB1BC" stroke-width="2.5" stroke-dasharray="10 810" stroke-linecap="round">
           <animateTransform attributeName="transform" type="rotate" from="0 160 160" to="360 160 160" dur="7s" repeatCount="indefinite"/>
         </circle>
         <circle cx="160" cy="160" r="104" fill="none" stroke="#2CB1BC" stroke-width="2.5" stroke-dasharray="8 646" stroke-linecap="round">
           <animateTransform attributeName="transform" type="rotate" from="360 160 160" to="0 160 160" dur="5s" repeatCount="indefinite"/>
         </circle>
-        <path d="M160 122c-15.5 0-28 12.3-28 27.4 0 20.6 28 46.6 28 46.6s28-26 28-46.6c0-15.1-12.5-27.4-28-27.4z" fill="#1C2230"/>
+        <path class="hero-pin" d="M160 122c-15.5 0-28 12.3-28 27.4 0 20.6 28 46.6 28 46.6s28-26 28-46.6c0-15.1-12.5-27.4-28-27.4z"/>
         <circle cx="160" cy="149" r="10" fill="#fff"/>
         <text x="160" y="153" text-anchor="middle" font-family="SF Mono, monospace" font-size="9" fill="#1C2230" font-weight="700">IP</text>
       </svg>
@@ -104,6 +109,7 @@
     <textarea id="emailInput" placeholder="Paste the full raw email source here — including headers (Received, From, Return-Path, DKIM-Signature, etc.) followed by the body.
 
 Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
+    <div class="input-error" id="inputError" style="display:none;"></div>
     <div class="input-row-bottom">
       <div class="input-row-left">
         <button class="sample-link" id="loadSample">Load a sample phishing email →</button>
@@ -119,6 +125,21 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
     <div class="loading-line" data-step="1"><span class="dot"></span> <span id="loadStep1">Validating SPF / DKIM / DMARC…</span></div>
     <div class="loading-line" data-step="2"><span class="dot"></span> <span id="loadStep2">Resolving origin IP geolocation…</span></div>
     <div class="loading-line" data-step="3"><span class="dot"></span> <span id="loadStep3">Running AI fraud classification…</span></div>
+  </div>
+
+  <div class="panel error-panel" id="errorBox" style="display:none;">
+    <div class="error-panel-main">
+      <div class="error-icon">🐢</div>
+      <div>
+        <div class="error-title" id="errorFriendlyTitle">Taking longer than expected</div>
+        <div class="error-sub" id="errorFriendlyText">Please wait a moment and try again — the network seems slow right now.</div>
+      </div>
+    </div>
+    <div class="error-actions">
+      <button class="sample-link" id="errorDetailsToggle">Show details</button>
+      <button class="primary" id="errorRetryBtn">Try again</button>
+    </div>
+    <div class="error-details" id="errorDetailsText" style="display:none;"></div>
   </div>
 
   <div id="results">
@@ -161,7 +182,6 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
         <div class="panel">
           <div class="panel-title" id="headerAnalysisTitle">Header &amp; Protocol Analysis</div>
           <div class="header-warning" id="headerWarning" style="display:none;"></div>
-          <div class="auth-row" id="authChecksRow"></div>
           <table id="headerTable"></table>
         </div>
         <div class="panel">
