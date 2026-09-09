@@ -93,7 +93,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     traceTitle: 'Relay / Trace Path', linkAnalysisTitle: 'Link & Domain Analysis',
     reportTitle: 'Forensic Report (AI-Generated)', historyTitle: 'Case History',
     cancelBtn: 'Cancel', saveBtn: 'Save',
-    footerText: 'PHISHTRACE — SIH 2026 · Analysis assists investigation, does not replace it · Built with HTML/CSS/JS',
+    footerText: 'Built for Smart India Hackathon 2026 · Analysis assists investigation, it does not replace it',
     profileBtnLogin: '👤 Login',
     loginModalTitleLogin: 'Log In', loginModalTitleSignup: 'Sign Up',
     loginModalDescLogin: 'Log in to unlock your case history — it now follows you across devices.',
@@ -159,7 +159,7 @@ Tip: In Gmail, use 'Show original' to copy the raw source.`,
     traceTitle: 'रिले / ट्रेस पथ', linkAnalysisTitle: 'लिंक और डोमेन विश्लेषण',
     reportTitle: 'फोरेंसिक रिपोर्ट (AI-जनित)', historyTitle: 'केस इतिहास',
     cancelBtn: 'रद्द करें', saveBtn: 'सहेजें',
-    footerText: 'PHISHTRACE — SIH 2026 · विश्लेषण जांच में सहायता करता है, उसकी जगह नहीं लेता · HTML/CSS/JS से निर्मित',
+    footerText: 'स्मार्ट इंडिया हैकाथॉन 2026 के लिए निर्मित · विश्लेषण जांच में सहायता करता है, उसकी जगह नहीं लेता',
     profileBtnLogin: '👤 लॉग इन',
     loginModalTitleLogin: 'लॉग इन करें', loginModalTitleSignup: 'साइन अप करें',
     loginModalDescLogin: 'अपना केस इतिहास अनलॉक करने के लिए लॉग इन करें — अब यह सभी डिवाइस पर आपके साथ रहेगा।',
@@ -407,8 +407,8 @@ async function saveHistory(entry){
 }
 async function renderHistory(){
   const h = await getHistory();
-  el('statCount').textContent = h.length;
-  el('statFlagged').textContent = h.filter(x => x.score >= 50).length;
+  animateNumber('statCount', h.length);
+  animateNumber('statFlagged', h.filter(x => x.score >= 50).length);
   if (!getUser() || !h.length) { el('historyPanel').style.display = 'none'; return; }
   el('historyPanel').style.display = 'block';
   el('historyList').innerHTML = h.map(item => `
@@ -690,7 +690,7 @@ function renderMap(geo) {
     return;
   }
   mapInstance = L.map('map', { zoomControl: false, attributionControl: false }).setView([geo.lat, geo.lon], 6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd' }).addTo(mapInstance);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd' }).addTo(mapInstance);
   L.circleMarker([geo.lat, geo.lon], { radius: 8, color: '#e63946', fillColor: '#e63946', fillOpacity: 0.6 }).addTo(mapInstance);
 
   const confidenceLabel = {
@@ -748,7 +748,7 @@ function renderVerdict(result) {
   const score = result.score;
   const rawVerdict = result.verdict || 'Suspicious';
   const displayVerdict = s.verdictLabels[rawVerdict] || rawVerdict;
-  const color = score === null ? '#4a5566' : scoreColor(score);
+  const color = score === null ? '#A6AFBC' : scoreColor(score);
 
   // Quick verdict line (progressive disclosure — shown first)
   el('qvIcon').textContent = verdictIcon(rawVerdict);
@@ -792,6 +792,7 @@ let lastCase = null; // { mode, subject, result, context }
 
 function setLastCase(mode, subject, result, context) {
   lastCase = { mode, subject, result, context };
+  recordSessionCheck(mode, result.verdict);
   const score = result.score;
   const reviewBox = el('reviewAction');
   const reportBox = el('reportAction');
@@ -889,6 +890,90 @@ el('complaintDownload')?.addEventListener('click', () => {
   a.download = 'phishtrace-complaint-draft.txt';
   a.click();
 });
+
+/* =========================================================
+   4c. iOS-STYLE UI EXTRAS — animated counters + session charts
+   (charts summarize this browser session's own checks — real data, not decoration)
+   ========================================================= */
+function animateNumber(elId, target) {
+  const node = el(elId);
+  if (!node) return;
+  target = Number(target) || 0;
+  const start = Number(node.dataset.val || 0);
+  if (start === target) { node.textContent = target; return; }
+  const duration = 500;
+  const startTime = performance.now();
+  function step(now) {
+    const progress = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(start + (target - start) * eased);
+    node.textContent = current;
+    if (progress < 1) requestAnimationFrame(step);
+    else node.dataset.val = target;
+  }
+  node.dataset.val = start;
+  requestAnimationFrame(step);
+}
+
+let sessionChecks = []; // [{mode, verdict}] — this browser tab only, resets on reload
+
+function recordSessionCheck(mode, verdict) {
+  sessionChecks.push({ mode, verdict });
+  renderSessionCharts();
+}
+
+function renderSessionCharts() {
+  const panel = el('insightsPanel');
+  if (!sessionChecks.length) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  // Bar chart: checks by type (Email / Link / Message)
+  const modes = [['email', 'Email'], ['link', 'Link'], ['message', 'Message']];
+  const modeCounts = modes.map(([key]) => sessionChecks.filter(c => c.mode === key).length);
+  const maxCount = Math.max(1, ...modeCounts);
+  el('barChartBox').innerHTML =
+    '<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">Checks by type</div>' +
+    modes.map(([, label], i) => `
+      <div class="bar-row">
+        <div class="label">${label}</div>
+        <div class="track"><div class="fill" style="width:${(modeCounts[i] / maxCount) * 100}%"></div></div>
+        <div class="count">${modeCounts[i]}</div>
+      </div>
+    `).join('');
+
+  // Donut chart: verdict mix
+  const verdictDefs = [
+    ['Legitimate', 'var(--safe)'],
+    ['Suspicious', 'var(--warn)'],
+    ['Likely Phishing', '#FF6A00'],
+    ['Confirmed Phishing/BEC', 'var(--alert)']
+  ];
+  const total = sessionChecks.length;
+  let angle = 0;
+  const stops = [];
+  verdictDefs.forEach(([verdict, color]) => {
+    const count = sessionChecks.filter(c => c.verdict === verdict).length;
+    if (!count) return;
+    const slice = (count / total) * 360;
+    stops.push(`${color} ${angle}deg ${angle + slice}deg`);
+    angle += slice;
+  });
+  const gradient = stops.length ? stops.join(', ') : 'var(--panel-2) 0deg 360deg';
+  const legend = verdictDefs
+    .map(([verdict, color]) => [verdict, color, sessionChecks.filter(c => c.verdict === verdict).length])
+    .filter(([, , count]) => count > 0)
+    .map(([verdict, color, count]) => `<div class="li"><span class="dot" style="background:${color}"></span>${verdict} (${count})</div>`)
+    .join('');
+  el('donutChartBox').innerHTML = `
+    <div style="font-size:12.5px;color:var(--muted);margin-bottom:12px;">Verdict mix</div>
+    <div style="display:flex;align-items:center;gap:18px;">
+      <div style="width:96px;height:96px;border-radius:50%;background:conic-gradient(${gradient});flex-shrink:0;position:relative;">
+        <div style="position:absolute;inset:16px;background:var(--panel);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:13px;font-weight:700;">${total}</div>
+      </div>
+      <div class="chart-legend" style="flex-direction:column;gap:8px;">${legend}</div>
+    </div>
+  `;
+}
 
 el('seeDetailsBtn').onclick = () => {
   fullDetailsOpen = !fullDetailsOpen;
@@ -1014,7 +1099,7 @@ async function pingVisitors() {
       body: JSON.stringify({ sessionId: getSessionId() })
     });
     const data = await res.json();
-    el('statVisitors').textContent = data.count;
+    animateNumber('statVisitors', data.count);
   } catch (e) {
     // Non-critical — just leave the last known count showing.
   }

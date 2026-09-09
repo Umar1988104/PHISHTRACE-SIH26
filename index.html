@@ -35,15 +35,61 @@
 </header>
 
 <main>
-  <div class="intro">
-    <div>
+  <section class="hero">
+    <div class="hero-copy">
       <h1 id="heroTitle">Paste an email, a link, or a message. Get the trace.</h1>
       <p id="heroSubtitle">Analyzes headers, authentication results, domain structure, and language patterns to flag phishing, spoofing, and BEC attempts — then traces the likely origin where evidence exists.</p>
+      <div class="stat-strip">
+        <div><div class="n" id="statVisitors">–</div><div class="l" id="statVisitorsLabel">Online now</div></div>
+        <div><div class="n" id="statCount">0</div><div class="l" id="statAnalyzedLabel">Analyzed</div></div>
+        <div><div class="n" id="statFlagged">0</div><div class="l" id="statFlaggedLabel">Flagged</div></div>
+      </div>
     </div>
-    <div class="stat-strip">
-      <div><div class="n" id="statVisitors">–</div><div class="l" id="statVisitorsLabel">Online now</div></div>
-      <div><div class="n" id="statCount">0</div><div class="l" id="statAnalyzedLabel">Analyzed</div></div>
-      <div><div class="n" id="statFlagged">0</div><div class="l" id="statFlaggedLabel">Flagged</div></div>
+    <div class="hero-visual" aria-hidden="true">
+      <svg viewBox="0 0 320 320" width="100%" height="100%">
+        <circle cx="160" cy="160" r="140" fill="none" stroke="#DCEEF0" stroke-width="1.5"/>
+        <circle cx="160" cy="160" r="104" fill="none" stroke="#DCEEF0" stroke-width="1.5"/>
+        <circle cx="160" cy="160" r="68" fill="none" stroke="#CFE9EB" stroke-width="1.5"/>
+        <circle cx="160" cy="160" r="140" fill="none" stroke="#2CB1BC" stroke-width="2.5" stroke-dasharray="10 810" stroke-linecap="round">
+          <animateTransform attributeName="transform" type="rotate" from="0 160 160" to="360 160 160" dur="7s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="160" cy="160" r="104" fill="none" stroke="#2CB1BC" stroke-width="2.5" stroke-dasharray="8 646" stroke-linecap="round">
+          <animateTransform attributeName="transform" type="rotate" from="360 160 160" to="0 160 160" dur="5s" repeatCount="indefinite"/>
+        </circle>
+        <path d="M160 122c-15.5 0-28 12.3-28 27.4 0 20.6 28 46.6 28 46.6s28-26 28-46.6c0-15.1-12.5-27.4-28-27.4z" fill="#1C2230"/>
+        <circle cx="160" cy="149" r="10" fill="#fff"/>
+        <text x="160" y="153" text-anchor="middle" font-family="SF Mono, monospace" font-size="9" fill="#1C2230" font-weight="700">IP</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="how-it-works">
+    <div class="how-step">
+      <div class="how-num">1</div>
+      <h3>Paste the evidence</h3>
+      <p>Raw email source, a suspicious link, a text message — or scan a QR code directly.</p>
+    </div>
+    <div class="how-step">
+      <div class="how-num">2</div>
+      <h3>We cross-examine it</h3>
+      <p>Headers, SPF/DKIM/DMARC, domain structure, and language patterns — in English, Hindi, or Hinglish.</p>
+    </div>
+    <div class="how-step">
+      <div class="how-num">3</div>
+      <h3>Get a verdict you can act on</h3>
+      <p>A score, a plain-language reason, an origin trace on the map, and a next step — review or report.</p>
+    </div>
+  </section>
+
+  <div class="panel" id="insightsPanel" style="display:none;">
+    <div class="panel-title" id="insightsTitle">This Session</div>
+    <div class="insights-grid">
+      <div>
+        <div id="barChartBox"></div>
+      </div>
+      <div>
+        <div id="donutChartBox"></div>
+      </div>
     </div>
   </div>
 
@@ -144,9 +190,53 @@ Tip: In Gmail, use 'Show original' to copy the raw source."></textarea>
     <div class="panel-title" id="historyTitle">Case History</div>
     <div id="historyList"></div>
   </div>
+
+  <section class="capabilities">
+    <h2>Built for how fraud actually reaches Indian users</h2>
+    <div class="cap-grid">
+      <div class="cap-card">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-7.2 7-12a7 7 0 0 0-14 0c0 4.8 7 12 7 12z"/><circle cx="12" cy="9" r="2.6"/></svg></div>
+        <h3>Origin tracing</h3>
+        <p>Extracts the sending IP from the relay chain and geolocates it with two independent providers, flagging VPN or hosting IPs so you don't mistake a proxy for the real source.</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a13.5 13.5 0 0 1 0 18M12 3a13.5 13.5 0 0 0 0 18"/></svg></div>
+        <h3>Any language, any script</h3>
+        <p>Scam language detection works across English, Hindi, and Hinglish — because that's genuinely how fraud is written here, not translated into it.</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/></svg></div>
+        <h3>QR code scanning</h3>
+        <p>Upload a QR code straight into Link mode — no need to decode it elsewhere first before checking where it actually leads.</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>Human in the loop</h3>
+        <p>A borderline score doesn't get guessed at — it goes to your team's review queue instead of a silent automated call.</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6M9 11h6"/></svg></div>
+        <h3>Cyber-cell ready</h3>
+        <p>A high-confidence verdict prepares a complaint draft with the evidence already filled in — you review it, then file it yourself.</p>
+      </div>
+      <div class="cap-card">
+        <div class="cap-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2 3 7v6c0 5 4 8.5 9 9 5-.5 9-4 9-9V7z"/></svg></div>
+        <h3>Never a silent block</h3>
+        <p>PhishTrace explains its reasoning and leaves the final call to a person — it flags and informs, it never deletes or blocks on its own.</p>
+      </div>
+    </div>
+  </section>
 </main>
 
-<footer id="footerText">PHISHTRACE — SIH 2026 · Analysis assists investigation, does not replace it · Built with HTML/CSS/JS</footer>
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="brand-mark" style="width:28px;height:28px;font-size:11px;">PT</div>
+      <span>PHISHTRACE</span>
+    </div>
+    <div class="footer-text" id="footerText">Built for Smart India Hackathon 2026 · Analysis assists investigation, it does not replace it</div>
+  </div>
+</footer>
 
 <div class="modal-overlay" id="loginModal">
   <div class="modal">
